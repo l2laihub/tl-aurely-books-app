@@ -4,7 +4,7 @@ import { getBookById } from '../services/bookService';
 import { getMultimediaByBookId, initializeMultimediaData, getValidVimeoId } from '../services/multimediaService';
 import VideoPlayer from '../components/VideoPlayer';
 import AudioPlayer from '../components/AudioPlayer';
-import { ArrowLeft, Video, Music, Star, BookOpen, Loader, AlertCircle, PlusCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Video, Music, Star, BookOpen, Loader, PlusCircle, ExternalLink } from 'lucide-react';
 
 interface MultimediaContent {
   id: string;
@@ -15,63 +15,72 @@ interface MultimediaContent {
   thumbnail: string;
 }
 
+interface BookData {
+  id: string;
+  title: string;
+  author: string;
+  coverImage: string;
+  ageRange: string;
+}
+
 const MultimediaPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [book, setBook] = useState<any | null>(null);
+  const [book, setBook] = useState<BookData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [multimedia, setMultimedia] = useState<MultimediaContent[]>([]);
+  const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
   
   useEffect(() => {
+    const loadBookAndMultimedia = async (bookId: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Load book data
+        const bookData = await getBookById(bookId);
+        setBook(bookData);
+        
+        // Initialize multimedia table if needed (for demo purposes)
+        await initializeMultimediaData();
+        
+        // Load multimedia data from the database
+        const multimediaData = await getMultimediaByBookId(bookId);
+        
+        // Fix any problematic Vimeo URLs for demo purposes
+        const fixedMultimediaData = multimediaData.map(item => {
+          if (item.type === 'video' && item.url.includes('vimeo.com')) {
+            // Fix Vimeo URL if it has an invalid ID
+            const validId = getValidVimeoId(item.url);
+            return {
+              ...item,
+              url: `https://vimeo.com/${validId}`
+            };
+          }
+          return item;
+        });
+        
+        // If we got data back, use it
+        if (fixedMultimediaData && fixedMultimediaData.length > 0) {
+          console.log("Using multimedia data from database:", fixedMultimediaData);
+          setMultimedia(fixedMultimediaData);
+        } else {
+          console.log("No multimedia found in database, using sample data");
+          // For demo/testing, we'll provide some examples if none exist in the database
+          setMultimedia(getSampleMultimedia(bookId));
+        }
+      } catch (err) {
+        console.error('Error loading multimedia page:', err);
+        setError('Failed to load multimedia content. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
     if (id) {
       loadBookAndMultimedia(id);
     }
   }, [id]);
-  
-  const loadBookAndMultimedia = async (bookId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Load book data
-      const bookData = await getBookById(bookId);
-      setBook(bookData);
-      
-      // Initialize multimedia table if needed (for demo purposes)
-      await initializeMultimediaData();
-      
-      // Load multimedia data from the database
-      const multimediaData = await getMultimediaByBookId(bookId);
-      
-      // Fix any problematic Vimeo URLs for demo purposes
-      const fixedMultimediaData = multimediaData.map(item => {
-        if (item.type === 'video' && item.url.includes('vimeo.com')) {
-          // Fix Vimeo URL if it has an invalid ID
-          const validId = getValidVimeoId(item.url);
-          return {
-            ...item,
-            url: `https://vimeo.com/${validId}`
-          };
-        }
-        return item;
-      });
-      
-      // If we got data back, use it
-      if (fixedMultimediaData && fixedMultimediaData.length > 0) {
-        console.log("Using multimedia data from database:", fixedMultimediaData);
-        setMultimedia(fixedMultimediaData);
-      } else {
-        console.log("No multimedia found in database, using sample data");
-        // For demo/testing, we'll provide some examples if none exist in the database
-        setMultimedia(getSampleMultimedia(bookId));
-      }
-    } catch (err: any) {
-      console.error('Error loading multimedia page:', err);
-      setError('Failed to load multimedia content. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
   
   // Sample multimedia content for demonstration
   const getSampleMultimedia = (bookId: string): MultimediaContent[] => {
@@ -158,6 +167,11 @@ const MultimediaPage: React.FC = () => {
   const videos = multimedia.filter(item => item.type === 'video');
   const audios = multimedia.filter(item => item.type === 'audio');
 
+  // Function to get thumbnail or use book cover as fallback
+  const getThumbnail = (item: MultimediaContent) => {
+    return item.thumbnail || book.coverImage;
+  };
+
   return (
     <div className="bg-primary-50 min-h-screen relative">
       {/* Decorative elements */}
@@ -212,13 +226,60 @@ const MultimediaPage: React.FC = () => {
           </div>
         </div>
         
-        {/* Video Section */}
-        <section className="mb-16">
-          <div className="flex items-center mb-6">
-            <Video size={28} className="text-primary-600 mr-2" />
-            <h2 className="text-2xl font-bold font-display text-primary-800">Videos & Animations</h2>
-          </div>
+        {/* Tabs Navigation */}
+        <div className="flex border-b border-gray-200 mb-8" role="tablist" aria-label="Multimedia content">
+          <button
+            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
+              activeTab === 'video'
+                ? 'border-primary-600 text-primary-800'
+                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-primary-300'
+            }`}
+            onClick={() => setActiveTab('video')}
+            aria-selected={activeTab === 'video' ? 'true' : 'false'}
+            role="tab"
+            aria-controls="video-panel"
+            id="video-tab"
+            title="Show videos and animations"
+          >
+            <Video size={20} className={`mr-2 ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-400'}`} aria-hidden="true" />
+            <span>Videos & Animations</span>
+            {videos.length > 0 && (
+              <span className="ml-2 bg-primary-100 text-primary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {videos.length}
+              </span>
+            )}
+          </button>
           
+          <button
+            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
+              activeTab === 'audio'
+                ? 'border-secondary-600 text-primary-800'
+                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-secondary-300'
+            }`}
+            onClick={() => setActiveTab('audio')}
+            aria-selected={activeTab === 'audio' ? 'true' : 'false'}
+            role="tab"
+            aria-controls="audio-panel"
+            id="audio-tab"
+            title="Show songs and audio"
+          >
+            <Music size={20} className={`mr-2 ${activeTab === 'audio' ? 'text-secondary-600' : 'text-gray-400'}`} aria-hidden="true" />
+            <span>Songs & Audio</span>
+            {audios.length > 0 && (
+              <span className="ml-2 bg-secondary-100 text-secondary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {audios.length}
+              </span>
+            )}
+          </button>
+        </div>
+        
+        {/* Video Tab Panel */}
+        <div 
+          id="video-panel"
+          role="tabpanel"
+          aria-labelledby="video-tab"
+          className={`transition-opacity duration-300 ${activeTab === 'video' ? 'block' : 'hidden'}`}
+        >
           {videos.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {videos.map(video => (
@@ -227,7 +288,7 @@ const MultimediaPage: React.FC = () => {
                   title={video.title}
                   description={video.description}
                   videoUrl={video.url}
-                  thumbnailUrl={video.thumbnail}
+                  thumbnailUrl={getThumbnail(video)}
                 />
               ))}
             </div>
@@ -254,15 +315,15 @@ const MultimediaPage: React.FC = () => {
               </div>
             </div>
           )}
-        </section>
+        </div>
         
-        {/* Audio Section */}
-        <section>
-          <div className="flex items-center mb-6">
-            <Music size={28} className="text-secondary-600 mr-2" />
-            <h2 className="text-2xl font-bold font-display text-primary-800">Songs & Audio</h2>
-          </div>
-          
+        {/* Audio Tab Panel */}
+        <div 
+          id="audio-panel"
+          role="tabpanel"
+          aria-labelledby="audio-tab"
+          className={`transition-opacity duration-300 ${activeTab === 'audio' ? 'block' : 'hidden'}`}
+        >
           {audios.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {audios.map(audio => (
@@ -271,7 +332,7 @@ const MultimediaPage: React.FC = () => {
                   title={audio.title}
                   description={audio.description}
                   audioUrl={audio.url}
-                  imageUrl={audio.thumbnail}
+                  imageUrl={getThumbnail(audio)}
                 />
               ))}
             </div>
@@ -298,7 +359,7 @@ const MultimediaPage: React.FC = () => {
               </div>
             </div>
           )}
-        </section>
+        </div>
         
         {/* Call to Action */}
         <div className="bg-gradient-to-r from-cream-50 to-cream-100 rounded-3xl p-8 text-center mt-16 border-2 border-cream-200 shadow-md transform hover:-translate-y-1 transition-all duration-300">

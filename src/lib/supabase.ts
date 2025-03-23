@@ -31,7 +31,21 @@ export async function uploadFileToStorage(file: File, bucket: string, path?: str
   
   try {
     // Create a simple file name with timestamp to avoid conflicts
-    const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+    // Sanitize the filename to remove special characters that could cause issues with storage paths
+    
+    // First, strip all types of quotes, apostrophes, and other problematic characters
+    let sanitizedFileName = file.name
+      .replace(/[''"'"''‚‛""„‟]/g, '') // Remove all types of quotes and apostrophes including Unicode variants
+      .replace(/[&\\#,+()$~%.:*?<>{}]/g, '_') // Replace other special chars with underscore
+      .replace(/\s+/g, '_'); // Replace spaces with underscores
+    
+    // For extra safety, encode the filename to handle any remaining special characters
+    sanitizedFileName = sanitizedFileName
+      .normalize('NFD') // Normalize to decomposed form
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritical marks
+      .replace(/[^\w.-]/g, '_'); // Replace any non-word chars (except dots and hyphens) with underscores
+    
+    const fileName = `${Date.now()}_${sanitizedFileName}`;
     const filePath = path ? `${path}/${fileName}` : fileName;
     
     console.log(`[UPLOAD] Starting upload process for file:`, {
