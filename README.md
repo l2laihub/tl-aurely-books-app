@@ -1,4 +1,17 @@
-# Literary Haven - Children's Book Platform
+# T.L. Aurely Books Platform
+
+## Logo Update Instructions
+
+To update the application with the new T.L. Aurely logo:
+
+1. Save the logo image to `public/images/tl-aurely-logo.png`
+2. You can use one of the following methods:
+   - Run `node scripts/save-logo.js` and follow the prompts
+   - For Windows users: Double-click on `save-logo.bat`
+   - For Mac/Linux users: Run `./save-logo.sh` (you may need to make it executable with `chmod +x save-logo.sh`)
+3. After saving the logo, run the application to see the updated header
+
+For more detailed instructions, see the README.md file in the `public/images` directory.
 
 ## Storage Setup Instructions
 

@@ -16,13 +16,13 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-2">
-            <div className="bg-white rounded-full p-1.5 shadow-md">
-              <BookOpen size={24} className="text-primary-600" />
-            </div>
+            <img
+              src="/images/tl-aurely-logo.png"
+              alt="T.L. Aurely Logo"
+              className="h-12 w-auto"
+            />
             <div className="flex items-center">
-              <span className="text-2xl font-bold font-display">T.L. Aurely</span>
-              <Star size={14} className="text-cream-300 mx-1 animate-twinkle" />
-              <span className="text-lg font-medium font-display">Books</span>
+              <span className="text-lg font-medium font-display">T.L. Aurely Books</span>
             </div>
           </Link>
           
