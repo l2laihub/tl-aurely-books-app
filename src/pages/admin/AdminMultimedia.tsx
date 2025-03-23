@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FileText, Music, Video, Image, File as FileIcon, Trash, Edit, Play, Plus, Search, Upload, Loader, AlertCircle, Youtube, Headphones, ExternalLink } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { uploadFileToStorage } from '../../lib/supabase';
 import { getMultimediaByBookId, createMultimedia, updateMultimedia, deleteMultimedia } from '../../services/multimediaService';
 import { getAllBooks } from '../../services/bookService';
 
@@ -34,12 +35,17 @@ const AdminMultimedia: React.FC = () => {
     description: '',
     type: 'video' as 'video' | 'audio',
     url: '',
-    thumbnail: ''
+    contentFile: null as File | null,
+    thumbnail: '',
+    thumbnailFile: null as File | null
   });
   
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editingContent, setEditingContent] = useState<MultimediaContent | null>(null);
+  const [editingContent, setEditingContent] = useState<MultimediaContent & {
+    contentFile: File | null;
+    thumbnailFile: File | null;
+  } | null>(null);
   
   const [isUploading, setIsUploading] = useState(false);
   
@@ -107,13 +113,58 @@ const AdminMultimedia: React.FC = () => {
       return;
     }
     
-    if (!newContent.title || !newContent.description || !newContent.url || !newContent.thumbnail) {
-      alert('Please fill in all required fields');
+    // Check if we have either a URL or a file for both content and thumbnail
+    const hasContentSource = newContent.url || newContent.contentFile;
+    const hasThumbnailSource = newContent.thumbnail || newContent.thumbnailFile;
+    
+    if (!newContent.title || !newContent.description || !hasContentSource || !hasThumbnailSource) {
+      alert('Please provide a title, description, and either a URL or file upload for both content and thumbnail');
       return;
     }
     
     try {
       setIsUploading(true);
+      
+      let contentUrl = newContent.url;
+      let thumbnailUrl = newContent.thumbnail;
+      
+      // Handle content file upload if provided
+      if (newContent.contentFile) {
+        try {
+          console.log('[MULTIMEDIA_UPLOAD] Uploading content file');
+          // Use 'materials' bucket for content files
+          contentUrl = await uploadFileToStorage(newContent.contentFile, 'materials', 'multimedia');
+          console.log('[MULTIMEDIA_UPLOAD] Content file uploaded successfully:', contentUrl);
+        } catch (error: unknown) {
+          console.error('[MULTIMEDIA_UPLOAD] Error uploading content file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Error uploading content file: ${errorMessage}`);
+          // Continue with the URL if provided, otherwise return
+          if (!newContent.url) {
+            setIsUploading(false);
+            return;
+          }
+        }
+      }
+      
+      // Handle thumbnail file upload if provided
+      if (newContent.thumbnailFile) {
+        try {
+          console.log('[MULTIMEDIA_UPLOAD] Uploading thumbnail file');
+          // Use 'covers' bucket for thumbnail images
+          thumbnailUrl = await uploadFileToStorage(newContent.thumbnailFile, 'covers', 'thumbnails');
+          console.log('[MULTIMEDIA_UPLOAD] Thumbnail file uploaded successfully:', thumbnailUrl);
+        } catch (error: unknown) {
+          console.error('[MULTIMEDIA_UPLOAD] Error uploading thumbnail file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Error uploading thumbnail file: ${errorMessage}`);
+          // Continue with the URL if provided, otherwise return
+          if (!newContent.thumbnail) {
+            setIsUploading(false);
+            return;
+          }
+        }
+      }
       
       // Save the multimedia to the database
       await createMultimedia({
@@ -121,8 +172,8 @@ const AdminMultimedia: React.FC = () => {
         title: newContent.title,
         description: newContent.description,
         type: newContent.type,
-        url: newContent.url,
-        thumbnail: newContent.thumbnail
+        url: contentUrl,
+        thumbnail: thumbnailUrl
       });
       
       // Update UI
@@ -134,8 +185,8 @@ const AdminMultimedia: React.FC = () => {
         title: newContent.title,
         description: newContent.description,
         type: newContent.type,
-        url: newContent.url,
-        thumbnail: newContent.thumbnail
+        url: contentUrl,
+        thumbnail: thumbnailUrl
       };
       
       setMultimedia([newItem, ...multimedia]);
@@ -146,7 +197,9 @@ const AdminMultimedia: React.FC = () => {
         description: '',
         type: 'video',
         url: '',
-        thumbnail: ''
+        contentFile: null,
+        thumbnail: '',
+        thumbnailFile: null
       });
       setSelectedBook('');
       setUploadModalOpen(false);
@@ -154,16 +207,21 @@ const AdminMultimedia: React.FC = () => {
       // Reload data to get proper IDs
       loadData();
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error uploading multimedia:', err);
-      alert('Failed to upload multimedia: ' + err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to upload multimedia: ' + errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
   
   const handleEditMultimedia = (item: MultimediaContent) => {
-    setEditingContent(item);
+    setEditingContent({
+      ...item,
+      contentFile: null,
+      thumbnailFile: null
+    });
     setEditModalOpen(true);
   };
   
@@ -177,27 +235,67 @@ const AdminMultimedia: React.FC = () => {
     try {
       setIsUploading(true);
       
+      let contentUrl = editingContent.url;
+      let thumbnailUrl = editingContent.thumbnail;
+      
+      // Handle content file upload if provided
+      if (editingContent.contentFile) {
+        try {
+          console.log('[MULTIMEDIA_UPDATE] Uploading content file');
+          // Use 'materials' bucket for content files
+          contentUrl = await uploadFileToStorage(editingContent.contentFile, 'materials', 'multimedia');
+          console.log('[MULTIMEDIA_UPDATE] Content file uploaded successfully:', contentUrl);
+        } catch (error: unknown) {
+          console.error('[MULTIMEDIA_UPDATE] Error uploading content file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Error uploading content file: ${errorMessage}`);
+          // Continue with the existing URL
+        }
+      }
+      
+      // Handle thumbnail file upload if provided
+      if (editingContent.thumbnailFile) {
+        try {
+          console.log('[MULTIMEDIA_UPDATE] Uploading thumbnail file');
+          // Use 'covers' bucket for thumbnail images
+          thumbnailUrl = await uploadFileToStorage(editingContent.thumbnailFile, 'covers', 'thumbnails');
+          console.log('[MULTIMEDIA_UPDATE] Thumbnail file uploaded successfully:', thumbnailUrl);
+        } catch (error: unknown) {
+          console.error('[MULTIMEDIA_UPDATE] Error uploading thumbnail file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          alert(`Error uploading thumbnail file: ${errorMessage}`);
+          // Continue with the existing URL
+        }
+      }
+      
       // Update the multimedia in the database
       await updateMultimedia(editingContent.id, {
         title: editingContent.title,
         description: editingContent.description,
         type: editingContent.type,
-        url: editingContent.url,
-        thumbnail: editingContent.thumbnail
+        url: contentUrl,
+        thumbnail: thumbnailUrl
       });
       
-      // Update UI
+      // Update UI with the new URLs
+      const updatedContent = {
+        ...editingContent,
+        url: contentUrl,
+        thumbnail: thumbnailUrl
+      };
+      
       setMultimedia(multimedia.map(item => 
-        item.id === editingContent.id ? editingContent : item
+        item.id === editingContent.id ? updatedContent : item
       ));
       
       // Close modal
       setEditModalOpen(false);
       setEditingContent(null);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error updating multimedia:', err);
-      alert('Failed to update multimedia: ' + err.message);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert('Failed to update multimedia: ' + errorMessage);
     } finally {
       setIsUploading(false);
     }
@@ -473,7 +571,7 @@ const AdminMultimedia: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Content URL <span className="text-red-500">*</span>
+                  Content URL 
                 </label>
                 <input 
                   type="text"
@@ -484,7 +582,6 @@ const AdminMultimedia: React.FC = () => {
                     : "https://suno.com/song/..."
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
                 />
                 <p className="text-xs text-amber-600 mt-1">
                   {newContent.type === 'video' ? (
@@ -501,11 +598,30 @@ const AdminMultimedia: React.FC = () => {
                     </>
                   )}
                 </p>
+                <div className="mt-2">
+                  <label htmlFor="content-file-upload" className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Content File
+                  </label>
+                  <input 
+                    id="content-file-upload"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setNewContent({...newContent, contentFile: e.target.files[0]});
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    aria-describedby="content-file-help"
+                  />
+                  <p id="content-file-help" className="mt-1 text-xs text-gray-500">
+                    {newContent.contentFile ? `Selected file: ${newContent.contentFile.name}` : 'Upload a file for content'}
+                  </p>
+                </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thumbnail URL <span className="text-red-500">*</span>
+                  Thumbnail URL 
                 </label>
                 <input 
                   type="text"
@@ -513,13 +629,31 @@ const AdminMultimedia: React.FC = () => {
                   onChange={(e) => setNewContent({...newContent, thumbnail: e.target.value})}
                   placeholder="https://example.com/thumbnail.jpg"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
                 />
                 <p className="text-xs text-amber-600 mt-1">
                   Enter a URL for the thumbnail image. You can use Unsplash images, for example:
                   <br />
                   https://images.unsplash.com/photo-1611162616475-46b635cb6868
                 </p>
+                <div className="mt-2">
+                  <label htmlFor="thumbnail-file-upload" className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Thumbnail File
+                  </label>
+                  <input 
+                    id="thumbnail-file-upload"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setNewContent({...newContent, thumbnailFile: e.target.files[0]});
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    aria-describedby="thumbnail-file-help"
+                  />
+                  <p id="thumbnail-file-help" className="mt-1 text-xs text-gray-500">
+                    {newContent.thumbnailFile ? `Selected file: ${newContent.thumbnailFile.name}` : 'Upload a file for thumbnail'}
+                  </p>
+                </div>
               </div>
               
               <div className="flex justify-end space-x-3 pt-4">
@@ -605,7 +739,7 @@ const AdminMultimedia: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Content URL <span className="text-red-500">*</span>
+                  Content URL 
                 </label>
                 <input 
                   type="text"
@@ -613,7 +747,6 @@ const AdminMultimedia: React.FC = () => {
                   onChange={(e) => setEditingContent({...editingContent, url: e.target.value})}
                   placeholder="https://example.com/video.mp4"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
                 />
                 <div className="mt-1">
                   <p className="text-xs text-amber-600">
@@ -629,11 +762,30 @@ const AdminMultimedia: React.FC = () => {
                     <span className="ml-1 truncate">{editingContent.url}</span>
                   </div>
                 </div>
+                <div className="mt-2">
+                  <label htmlFor="content-file-upload-edit" className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload New Content File
+                  </label>
+                  <input 
+                    id="content-file-upload-edit"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setEditingContent({...editingContent, contentFile: e.target.files[0]});
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    aria-describedby="content-file-help-edit"
+                  />
+                  <p id="content-file-help-edit" className="mt-1 text-xs text-gray-500">
+                    {editingContent.contentFile ? `Selected file: ${editingContent.contentFile.name}` : 'Upload a new file for content'}
+                  </p>
+                </div>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thumbnail URL <span className="text-red-500">*</span>
+                  Thumbnail URL 
                 </label>
                 <input 
                   type="text"
@@ -641,7 +793,6 @@ const AdminMultimedia: React.FC = () => {
                   onChange={(e) => setEditingContent({...editingContent, thumbnail: e.target.value})}
                   placeholder="https://example.com/thumbnail.jpg"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
                 />
                 <div className="mt-2">
                   <p className="text-sm font-medium text-gray-700">Current Thumbnail:</p>
@@ -650,6 +801,25 @@ const AdminMultimedia: React.FC = () => {
                     alt="Thumbnail Preview" 
                     className="mt-1 h-24 object-cover rounded-md border border-gray-200"
                   />
+                </div>
+                <div className="mt-2">
+                  <label htmlFor="thumbnail-file-upload-edit" className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload New Thumbnail File
+                  </label>
+                  <input 
+                    id="thumbnail-file-upload-edit"
+                    type="file"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setEditingContent({...editingContent, thumbnailFile: e.target.files[0]});
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    aria-describedby="thumbnail-file-help-edit"
+                  />
+                  <p id="thumbnail-file-help-edit" className="mt-1 text-xs text-gray-500">
+                    {editingContent.thumbnailFile ? `Selected file: ${editingContent.thumbnailFile.name}` : 'Upload a new file for thumbnail'}
+                  </p>
                 </div>
               </div>
               

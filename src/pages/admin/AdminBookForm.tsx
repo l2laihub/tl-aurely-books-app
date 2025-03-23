@@ -3,6 +3,19 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Save, ArrowLeft, Plus, X, Upload, Trash, Loader, AlertCircle, Image as ImageIcon, FileText, Music, Video, File as FileIcon } from 'lucide-react';
 import { getBookById, createBook, updateBook, convertFileToBase64, formatFileSize } from '../../services/bookService';
 import { useAuth } from '../../context/AuthContext';
+import { supabase } from '../../lib/supabase';
+
+interface Material {
+  id?: string;
+  book_id?: string;
+  title: string;
+  description: string;
+  type: string;
+  fileUrl: string;
+  fileSize: string;
+  file?: File;
+  fileData?: string;
+}
 
 const AdminBookForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -22,23 +35,105 @@ const AdminBookForm: React.FC = () => {
     genres: [''] // Initialize with one empty genre
   });
   
-  const [materials, setMaterials] = useState<{
-    id?: string;
-    book_id?: string;
-    title: string;
-    description: string;
-    type: string;
-    fileUrl: string;
-    fileSize: string;
-    file?: File;
-    fileData?: string; // Base64 data for image types
-  }[]>([]);
-
-  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  
+  // Custom debug logger that shows in UI
+  const debugLog = (message: string, data?: any) => {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    const logMessage = data 
+      ? `[${timestamp}] ${message}: ${JSON.stringify(data, null, 2)}`
+      : `[${timestamp}] ${message}`;
+    
+    console.log(logMessage);
+    setDebugLogs(prev => [logMessage, ...prev]);
+  };
+  
+  // Test function to verify Supabase storage
+  const testSupabaseStorage = async () => {
+    debugLog('[TEST] Starting Supabase storage test');
+    
+    try {
+      // 1. List buckets
+      debugLog('[TEST] Listing storage buckets');
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        debugLog('[TEST] Error listing buckets', bucketsError);
+        throw new Error(`Failed to list buckets: ${bucketsError.message}`);
+      }
+      
+      debugLog('[TEST] Buckets retrieved successfully', { 
+        count: buckets.length,
+        buckets: buckets.map(b => b.name)
+      });
+      
+      // 2. Find a suitable bucket to use
+      if (buckets.length === 0) {
+        debugLog('[TEST] No buckets available. Cannot proceed with storage test.');
+        setError('No storage buckets available. Please contact an administrator.');
+        return;
+      }
+      
+      // Use the first available bucket
+      const bucketToUse = buckets[0].name;
+      debugLog('[TEST] Using bucket for test', { bucket: bucketToUse });
+      
+      // 4. Create a test file
+      debugLog('[TEST] Creating test file');
+      const testBlob = new Blob(['Test file content'], { type: 'text/plain' });
+      const testFile = new File([testBlob], 'test-file.txt', { type: 'text/plain' });
+      
+      // 5. Upload test file
+      const filePath = `test/test-${Date.now()}.txt`;
+      debugLog('[TEST] Uploading test file', { path: filePath, bucket: bucketToUse });
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketToUse)
+        .upload(filePath, testFile, {
+          cacheControl: '3600',
+          upsert: true
+        });
+      
+      if (uploadError) {
+        debugLog('[TEST] Error uploading test file', uploadError);
+        throw new Error(`Failed to upload test file: ${uploadError.message}`);
+      }
+      
+      debugLog('[TEST] Test file uploaded successfully', uploadData);
+      
+      // 6. Get public URL
+      const { data: urlData } = supabase.storage
+        .from(bucketToUse)
+        .getPublicUrl(filePath);
+      
+      debugLog('[TEST] Generated public URL', { url: urlData.publicUrl });
+      
+      // 7. Try to fetch the file to verify it's accessible
+      debugLog('[TEST] Verifying file is accessible');
+      try {
+        const response = await fetch(urlData.publicUrl);
+        if (response.ok) {
+          debugLog('[TEST] File is accessible', { status: response.status });
+        } else {
+          debugLog('[TEST] File is not accessible', { status: response.status });
+        }
+      } catch (fetchError) {
+        debugLog('[TEST] Error fetching file', fetchError);
+      }
+      
+      debugLog('[TEST] Supabase storage test completed successfully');
+    } catch (err) {
+      debugLog('[TEST] Supabase storage test failed', err);
+      setError(`Storage test failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
   
   // Load book data if in edit mode
   useEffect(() => {
@@ -51,6 +146,7 @@ const AdminBookForm: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
+      debugLog('[BOOK_FORM] Loading book data', { bookId });
       const book = await getBookById(bookId);
       
       setFormState({
@@ -69,10 +165,14 @@ const AdminBookForm: React.FC = () => {
 
       // Set cover image preview from existing base64 data or URL
       if (book.coverImage) {
+        debugLog('[BOOK_FORM] Setting cover image preview', { 
+          imageType: book.coverImage.startsWith('data:image') ? 'base64' : 'url',
+          imageLength: book.coverImage.length
+        });
         setCoverImagePreview(book.coverImage);
       }
     } catch (err: any) {
-      console.error('Error loading book:', err);
+      debugLog('[BOOK_FORM] Error loading book', err);
       setError('Failed to load book data. Please try again.');
     } finally {
       setIsLoading(false);
@@ -89,24 +189,87 @@ const AdminBookForm: React.FC = () => {
     }
   };
   
-  const handleCoverImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCoverImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setCoverImageFile(file);
+      debugLog(`[COVER_IMAGE] Cover image selected`, {
+        fileName: file.name,
+        fileType: file.type,
+        fileSize: file.size
+      });
       
-      // Create a preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setCoverImagePreview(previewUrl);
+      // Check if the file is an image
+      if (!file.type.startsWith('image/')) {
+        debugLog(`[COVER_IMAGE] Selected file is not an image`, { fileType: file.type });
+        setError('Please select an image file for the cover image.');
+        return;
+      }
       
-      // Convert the file to base64
-      convertFileToBase64(file)
-        .then(base64String => {
-          setFormState({ ...formState, coverImage: base64String });
-        })
-        .catch(err => {
-          console.error('Error converting cover image to base64:', err);
-          setError('Failed to process cover image. Please try a different file.');
-        });
+      try {
+        debugLog(`[COVER_IMAGE] Attempting to upload cover image to Supabase storage`);
+        
+        // Use the covers bucket directly instead of listing buckets
+        const bucketToUse = 'covers';
+        debugLog(`[COVER_IMAGE] Using bucket for upload`, { bucket: bucketToUse });
+        
+        // Upload the file to Supabase storage
+        const filePath = `${Date.now()}-${file.name}`;
+        debugLog(`[COVER_IMAGE] Uploading file to path: ${filePath}`);
+        
+        const { data, error } = await supabase.storage
+          .from(bucketToUse)
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (error) {
+          debugLog(`[COVER_IMAGE] Error uploading to Supabase storage`, error);
+          throw error;
+        }
+        
+        debugLog(`[COVER_IMAGE] File uploaded successfully`, data);
+        
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from(bucketToUse)
+          .getPublicUrl(filePath);
+        
+        debugLog(`[COVER_IMAGE] Generated public URL`, { url: urlData.publicUrl });
+        
+        // Update the form state with the public URL
+        setFormState(prev => ({
+          ...prev,
+          coverImage: urlData.publicUrl
+        }));
+        
+        // Create a preview for the UI
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          debugLog(`[COVER_IMAGE] Created local preview URL`);
+          setCoverImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+        
+      } catch (err) {
+        debugLog(`[COVER_IMAGE] Error uploading cover image`, err);
+        
+        // Fallback to base64 if Supabase upload fails
+        debugLog(`[COVER_IMAGE] Falling back to base64 conversion`);
+        try {
+          const base64Data = await convertFileToBase64(file);
+          debugLog(`[COVER_IMAGE] Successfully converted to base64`);
+          
+          setFormState(prev => ({
+            ...prev,
+            coverImage: base64Data
+          }));
+          setCoverImagePreview(base64Data);
+        } catch (base64Err) {
+          debugLog(`[COVER_IMAGE] Error converting to base64`, base64Err);
+          setError('Failed to process the cover image. Please try again.');
+        }
+      }
     }
   };
 
@@ -133,41 +296,85 @@ const AdminBookForm: React.FC = () => {
     
     try {
       setIsSaving(true);
+      debugLog('[BOOK_SUBMIT] Starting book submission process');
       
       // Filter out empty genres
       const filteredGenres = formState.genres.filter(genre => genre.trim() !== '');
+      debugLog('[BOOK_SUBMIT] Filtered genres', filteredGenres);
       
       // Process all material files
+      debugLog('[BOOK_SUBMIT] Processing materials', { count: materials.length });
       const processedMaterials = await Promise.all(
-        materials.map(async (material) => {
+        materials.map(async (material, index) => {
           // If there's no file to process, return the material as is
           if (!material.file) {
+            debugLog(`[BOOK_SUBMIT] Material ${index + 1} has no file to process`);
             return material;
           }
           
           try {
+            debugLog(`[BOOK_SUBMIT] Processing material ${index + 1}`, {
+              title: material.title,
+              type: material.type,
+              fileName: material.file.name,
+              fileSize: material.file.size
+            });
+            
             // Handle different file types
             if (material.type === 'image' && material.file.type.startsWith('image/')) {
               // Convert image files to base64
+              debugLog(`[BOOK_SUBMIT] Converting image to base64`);
               const base64Data = await convertFileToBase64(material.file);
+              debugLog(`[BOOK_SUBMIT] Image converted to base64 successfully`);
               return {
                 ...material,
                 fileUrl: base64Data,
                 file: undefined // Clear the file after processing
               };
             } else {
-              // For non-image files, generate a unique file name with timestamp
-              const fileName = `${Date.now()}-${material.file.name}`;
+              debugLog(`[BOOK_SUBMIT] Uploading file to Supabase storage`);
+              
+              // Use the materials bucket directly instead of listing buckets
+              const bucketToUse = 'materials';
+              debugLog(`[BOOK_SUBMIT] Using bucket for upload`, { bucket: bucketToUse });
+              
+              // Upload the file to Supabase storage
+              const filePath = `${Date.now()}-${material.file.name}`;
+              debugLog(`[BOOK_SUBMIT] Uploading file to path: ${filePath}`);
+              
+              const { data, error } = await supabase.storage
+                .from(bucketToUse)
+                .upload(filePath, material.file, {
+                  cacheControl: '3600',
+                  upsert: true
+                });
+              
+              if (error) {
+                debugLog(`[BOOK_SUBMIT] Error uploading file`, error);
+                setError(`Failed to upload file: ${error.message}`);
+                // Return the original material instead of undefined
+                return material;
+              }
+              
+              debugLog(`[BOOK_SUBMIT] File uploaded successfully`, data);
+              
+              // Get the public URL
+              const { data: urlData } = supabase.storage
+                .from(bucketToUse)
+                .getPublicUrl(filePath);
+              
+              debugLog(`[BOOK_SUBMIT] Generated public URL`, { url: urlData.publicUrl });
+              
               return {
                 ...material,
-                fileUrl: `/downloads/${fileName}`,
-                fileSize: formatFileSize(material.file.size),
+                fileUrl: urlData.publicUrl,
                 file: undefined // Clear the file after processing
               };
             }
           } catch (err) {
-            console.error(`Error processing material file:`, err);
-            // Return the material without changes if processing fails
+            debugLog(`[BOOK_SUBMIT] Error processing material ${index + 1}`, err);
+            setError(`Error processing material: ${err instanceof Error ? err.message : String(err)}`);
+            // Return the original material instead of undefined
             return material;
           }
         })
@@ -175,25 +382,31 @@ const AdminBookForm: React.FC = () => {
       
       // Remove any file objects as they're not needed for the database
       const cleanedMaterials = processedMaterials.map(({ file, ...rest }) => rest);
+      debugLog('[BOOK_SUBMIT] Processed all materials', { count: cleanedMaterials.length });
       
       if (isEditMode && id) {
         // Update existing book
+        debugLog('[BOOK_SUBMIT] Updating existing book', { id });
         await updateBook(id, {
           ...formState,
           genres: filteredGenres
         }, cleanedMaterials);
+        debugLog('[BOOK_SUBMIT] Book updated successfully');
       } else {
         // Create new book
+        debugLog('[BOOK_SUBMIT] Creating new book');
         await createBook({
           ...formState,
           genres: filteredGenres
         }, cleanedMaterials);
+        debugLog('[BOOK_SUBMIT] Book created successfully');
       }
       
       // Navigate back to the books list
+      debugLog('[BOOK_SUBMIT] Navigating back to books list');
       navigate('/admin/books');
     } catch (err: any) {
-      console.error('Error saving book:', err);
+      debugLog('[BOOK_SUBMIT] Error saving book', err);
       setError(err.message || 'Failed to save book. Please try again.');
     } finally {
       setIsSaving(false);
@@ -201,70 +414,87 @@ const AdminBookForm: React.FC = () => {
   };
   
   const handleAddMaterial = () => {
-    setMaterials([
-      ...materials,
-      {
-        title: '',
-        description: '',
-        type: 'pdf',
-        fileUrl: '',
-        fileSize: '0 KB'
-      }
-    ]);
+    debugLog(`[MATERIAL_ADD] Adding new material`);
+    
+    // Create a new material with default values
+    const newMaterial: Material = {
+      title: '',
+      description: '',
+      type: 'pdf',
+      fileUrl: '',
+      fileSize: '0 KB'
+    };
+    
+    setMaterials([...materials, newMaterial]);
+    debugLog(`[MATERIAL_ADD] New material added successfully`);
   };
   
   const handleRemoveMaterial = (index: number) => {
-    setMaterials(materials.filter((_, i) => i !== index));
+    const updatedMaterials = [...materials];
+    const removedMaterial = updatedMaterials[index];
+    
+    if (!removedMaterial) {
+      debugLog(`[MATERIAL_REMOVE] Error: Material at index ${index} not found`);
+      return;
+    }
+    
+    debugLog(`[MATERIAL_REMOVE] Removing material at index ${index}`, {
+      title: removedMaterial.title,
+      type: removedMaterial.type
+    });
+    
+    // If there's a file URL that's an object URL, revoke it to prevent memory leaks
+    if (removedMaterial.fileUrl && removedMaterial.fileUrl.startsWith('blob:')) {
+      debugLog(`[MATERIAL_REMOVE] Revoking object URL`);
+      URL.revokeObjectURL(removedMaterial.fileUrl);
+    }
+    
+    updatedMaterials.splice(index, 1);
+    setMaterials(updatedMaterials);
+    debugLog(`[MATERIAL_REMOVE] Material removed successfully`);
   };
   
   const handleMaterialChange = (index: number, field: string, value: string | File) => {
     const updatedMaterials = [...materials];
+    const material = updatedMaterials[index];
     
-    if (field === 'file' && value instanceof globalThis.File) {
-      const material = updatedMaterials[index];
-      
-      // Update fileSize
-      const fileSize = formatFileSize(value.size);
-      
-      // Store the file object for later processing on form submission
-      updatedMaterials[index] = { 
-        ...material,
-        file: value,
-        fileSize: fileSize
-      };
-      
-      // Generate a preview URL for the UI
-      if (material.type === 'image' && value.type.startsWith('image/')) {
-        // For images, create a temporary object URL for preview
-        updatedMaterials[index].fileUrl = URL.createObjectURL(value);
-        
-        // Also try to convert to base64 in the background for immediate preview
-        convertFileToBase64(value)
-          .then(base64String => {
-            const materialsCopy = [...materials];
-            materialsCopy[index] = {
-              ...materialsCopy[index],
-              fileUrl: base64String,
-              fileData: base64String
-            };
-            setMaterials(materialsCopy);
-          })
-          .catch(err => {
-            console.error('Error converting to base64:', err);
-          });
-      } else {
-        // For non-image files, just store the file name as reference
-        updatedMaterials[index].fileUrl = `/downloads/${value.name}`;
-      }
-    } else {
-      // For non-file fields, just update the value
-      updatedMaterials[index] = { 
-        ...updatedMaterials[index], 
-        [field]: value 
-      };
+    if (!material) {
+      debugLog(`[MATERIAL_CHANGE] Error: Material at index ${index} not found`);
+      return;
     }
     
+    const updatedMaterial = { ...material };
+    
+    if (field === 'file' && value instanceof File) {
+      debugLog(`[MATERIAL_CHANGE] File selected for material at index ${index}`, {
+        fileName: value.name,
+        fileSize: value.size,
+        fileType: value.type
+      });
+      
+      updatedMaterial.file = value;
+      updatedMaterial.fileSize = formatFileSize(value.size);
+      
+      // For images, create a preview URL
+      if (updatedMaterial.type === 'image' && value.type.startsWith('image/')) {
+        debugLog(`[MATERIAL_CHANGE] Creating preview URL for image`);
+        // Revoke previous URL if it exists and is an object URL
+        if (updatedMaterial.fileUrl && updatedMaterial.fileUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(updatedMaterial.fileUrl);
+        }
+        updatedMaterial.fileUrl = URL.createObjectURL(value);
+      } else {
+        // For non-image files, just store the file name as reference
+        debugLog(`[MATERIAL_CHANGE] Setting file name reference for non-image file`);
+        updatedMaterial.fileUrl = `/downloads/${value.name}`;
+      }
+    } else if (typeof value === 'string') {
+      (updatedMaterial as any)[field] = value;
+    }
+    
+    updatedMaterials[index] = updatedMaterial;
     setMaterials(updatedMaterials);
+    debugLog(`[MATERIAL_CHANGE] Material updated successfully`);
   };
 
   if (!isAuthenticated) {
@@ -293,7 +523,42 @@ const AdminBookForm: React.FC = () => {
         <h1 className="text-2xl font-display font-bold text-primary-800">
           {isEditMode ? 'Edit Book' : 'Add New Book'}
         </h1>
+        <div className="ml-auto flex gap-2">
+          <button
+            onClick={testSupabaseStorage}
+            className="bg-blue-100 hover:bg-blue-200 text-blue-800 font-medium py-1 px-3 rounded-lg text-sm transition-colors"
+            type="button"
+            title="Test Storage"
+          >
+            Test Storage
+          </button>
+          <button
+            onClick={() => setShowDebugPanel(!showDebugPanel)}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-1 px-3 rounded-lg text-sm transition-colors"
+            type="button"
+            title="Toggle Debug Panel"
+          >
+            Debug
+          </button>
+        </div>
       </div>
+      
+      {showDebugPanel && (
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6 overflow-auto max-h-96">
+          <h2 className="text-lg font-medium mb-2">Debug Logs:</h2>
+          {debugLogs.length === 0 ? (
+            <p className="text-gray-500">No logs yet. Try uploading a file.</p>
+          ) : (
+            <div className="text-xs font-mono whitespace-pre-wrap">
+              {debugLogs.map((log, index) => (
+                <div key={index} className="py-1 border-b border-gray-100">
+                  {log}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-start">
@@ -389,7 +654,7 @@ const AdminBookForm: React.FC = () => {
                       required={!coverImagePreview}
                     />
                     <p className="text-sm text-gray-500 mt-1">
-                      {coverImageFile ? `Selected: ${coverImageFile.name}` : 'Select an image file to upload (JPG, PNG, etc.)'}
+                      Select an image file to upload (JPG, PNG, etc.)
                     </p>
                     <p className="text-xs text-amber-600 mt-1">
                       For best performance, use images under 1MB in size

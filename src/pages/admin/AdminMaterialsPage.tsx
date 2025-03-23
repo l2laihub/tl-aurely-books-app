@@ -1,10 +1,72 @@
 import React, { useState, useEffect } from 'react';
-import { books } from '../../data/books';
 import { FileText, Music, Video, Image, File as FileIcon, Trash, Edit, Download, Plus, Search, Upload, Loader, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { supabase, uploadFileToStorage } from '../../lib/supabase';
 import { convertFileToBase64, formatFileSize } from '../../services/bookService';
+
+// Test log to verify console logging is working
+console.log('TEST LOG: AdminMaterialsPage component is loaded');
+
+// Function to ensure the materials bucket exists
+async function ensureMaterialsBucketExists() {
+  try {
+    // Check if the bucket exists
+    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+    
+    if (listError) {
+      console.error('Error listing buckets:', listError);
+      return false;
+    }
+    
+    const bucketExists = buckets.some(bucket => bucket.name === 'materials');
+    
+    if (!bucketExists) {
+      console.log("Materials bucket doesn't exist, creating it now...");
+      
+      // Create the bucket
+      const { error: createError } = await supabase.storage.createBucket('materials', {
+        public: true
+      });
+      
+      if (createError) {
+        console.error('Error creating materials bucket:', createError);
+        return false;
+      }
+      
+      console.log('Materials bucket created successfully');
+      
+      // Set up public access policy for the bucket
+      const { error: policyError } = await supabase
+        .storage
+        .from('materials')
+        .createSignedUrl('dummy.txt', 1); // This is just to check if we have access
+      
+      if (policyError) {
+        console.log('Setting up public access policy for materials bucket...');
+        
+        // Create a SQL policy for public access (this requires admin rights)
+        // Note: This might not work if the user doesn't have admin rights
+        // In that case, you'll need to set up the policy in the Supabase dashboard
+        console.log('Please ensure the following SQL policy is set up in your Supabase dashboard:');
+        console.log(`
+          CREATE POLICY "Public Access" 
+          ON storage.objects 
+          FOR ALL 
+          USING (bucket_id = 'materials')
+          WITH CHECK (bucket_id = 'materials');
+        `);
+      }
+      
+      return true;
+    }
+    
+    return true;
+  } catch (error: unknown) {
+    console.error('Error in ensureMaterialsBucketExists:', error);
+    return false;
+  }
+}
 
 interface Material {
   id: string;
@@ -15,6 +77,8 @@ interface Material {
   type: string;
   fileUrl: string;
   fileSize: string;
+  contentUrl?: string;
+  thumbnailUrl?: string;
 }
 
 const AdminMaterialsPage: React.FC = () => {
@@ -33,7 +97,11 @@ const AdminMaterialsPage: React.FC = () => {
     title: '',
     description: '',
     type: 'pdf',
-    file: null as File | null
+    file: null as File | null,
+    contentUrl: '',
+    contentFile: null as File | null,
+    thumbnailUrl: '',
+    thumbnailFile: null as File | null
   });
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -42,9 +110,41 @@ const AdminMaterialsPage: React.FC = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [editFile, setEditFile] = useState<File | null>(null);
+  const [editContentFile, setEditContentFile] = useState<File | null>(null);
+  const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+  
+  // Test state for debugging
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const [showDebugPanel, setShowDebugPanel] = useState(false);
+  
+  // Custom debug logger that shows in UI
+  const debugLog = (message: string, data?: any) => {
+    const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+    const formattedMessage = data 
+      ? `${timestamp} - ${message}: ${JSON.stringify(data, null, 2)}`
+      : `${timestamp} - ${message}`;
+    
+    setDebugLogs(prev => [...prev, formattedMessage]);
+    
+    // Also try normal console log
+    if (data) {
+      console.log(message, data);
+    } else {
+      console.log(message);
+    }
+  };
   
   useEffect(() => {
     if (isAuthenticated) {
+      debugLog('Component mounted, checking materials bucket');
+      ensureMaterialsBucketExists().then(success => {
+        if (success) {
+          debugLog('Materials bucket is ready for uploads');
+        } else {
+          debugLog('Failed to ensure materials bucket exists');
+        }
+      });
       loadData();
     }
   }, [isAuthenticated]);
@@ -81,9 +181,9 @@ const AdminMaterialsPage: React.FC = () => {
       }));
       
       setMaterials(formattedMaterials);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading data:', err);
-      setError(err.message || 'Failed to load data');
+      setError((err as Error).message || 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +204,7 @@ const AdminMaterialsPage: React.FC = () => {
       
       // Remove from UI
       setMaterials(materials.filter(material => material.id !== id));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error deleting material:', err);
       alert('Failed to delete material');
     }
@@ -131,41 +231,149 @@ const AdminMaterialsPage: React.FC = () => {
     
     try {
       setIsUploading(true);
+      debugLog('[MATERIAL_UPLOAD] Starting material upload process', {
+        bookId: selectedBook,
+        materialTitle: newMaterial.title,
+        materialType: newMaterial.type,
+        fileName: newMaterial.file?.name,
+        fileType: newMaterial.file?.type,
+        fileSize: newMaterial.file?.size,
+        hasContentFile: !!newMaterial.contentFile,
+        hasThumbnailFile: !!newMaterial.thumbnailFile
+      });
+      
+      // Ensure the materials bucket exists before uploading
+      debugLog('[MATERIAL_UPLOAD] Ensuring materials bucket exists');
+      const bucketReady = await ensureMaterialsBucketExists();
+      if (!bucketReady) {
+        debugLog('[MATERIAL_UPLOAD] Failed to ensure materials bucket exists');
+        throw new Error('Failed to ensure materials bucket exists');
+      }
+      debugLog('[MATERIAL_UPLOAD] Materials bucket is ready');
       
       let fileUrl = '';
       let fileSize = '';
+      let contentUrl = newMaterial.contentUrl;
+      let thumbnailUrl = newMaterial.thumbnailUrl;
       
       // Handle file upload based on type
       if (newMaterial.file) {
         try {
-          // Convert image files to base64, store others as references
+          // Convert image files to base64, upload other files to Supabase Storage
           if (newMaterial.type === 'image' && newMaterial.file.type.startsWith('image/')) {
+            debugLog('[MATERIAL_UPLOAD] Converting image file to base64');
             const base64Data = await convertFileToBase64(newMaterial.file);
             fileUrl = base64Data;
+            debugLog('[MATERIAL_UPLOAD] Image file converted to base64 successfully');
           } else {
-            // For other file types, save to public/downloads and use reference path
-            // In a real app, you'd upload to cloud storage instead
-            const fileName = `${Date.now()}-${newMaterial.file.name}`;
-            fileUrl = `/downloads/${fileName}`;
+            // For non-image files, upload to Supabase Storage
+            debugLog('[MATERIAL_UPLOAD] Preparing to upload non-image file to Supabase Storage:', {
+              fileName: newMaterial.file.name,
+              fileType: newMaterial.file.type,
+              fileSize: newMaterial.file.size
+            });
             
-            // Here we would normally upload to cloud storage
-            // Since we can't directly write to disk in this environment,
-            // we'll just use the reference path and handle later
-            console.log(`Saving file reference: ${fileUrl}`);
+            try {
+              // Use the uploadFileToStorage function from supabase.ts
+              debugLog('[MATERIAL_UPLOAD] Calling uploadFileToStorage function');
+              const publicUrl = await uploadFileToStorage(newMaterial.file, 'materials');
+              fileUrl = publicUrl;
+              debugLog('[MATERIAL_UPLOAD] File successfully uploaded to Supabase Storage:', publicUrl);
+              
+              // Verify the file exists in storage
+              try {
+                debugLog('[MATERIAL_UPLOAD] Verifying file exists in materials bucket');
+                const { data: fileList, error: listError } = await supabase.storage
+                  .from('materials')
+                  .list();
+                
+                if (listError) {
+                  debugLog('[MATERIAL_UPLOAD] Error listing files in materials bucket:', listError);
+                } else {
+                  debugLog('[MATERIAL_UPLOAD] Files in materials bucket:', fileList);
+                  
+                  // Check if our file is in the list
+                  const fileExists = fileList.some(f => publicUrl.includes(f.name));
+                  debugLog('[MATERIAL_UPLOAD] File exists in bucket:', fileExists);
+                  
+                  if (!fileExists) {
+                    debugLog('[MATERIAL_UPLOAD] File not found in bucket after upload. URL may be incorrect or file not uploaded properly.');
+                  }
+                }
+              } catch (verifyError: unknown) {
+                debugLog('[MATERIAL_UPLOAD] Error verifying file in storage:', verifyError);
+              }
+            } catch (storageError: unknown) {
+              debugLog('[MATERIAL_UPLOAD] Supabase Storage upload failed:', storageError);
+              throw new Error(`Failed to upload to Supabase Storage: ${(storageError as Error).message || 'Unknown error'}`);
+            }
           }
           
           fileSize = formatFileSize(newMaterial.file.size);
-        } catch (uploadErr: any) {
-          console.error('Error processing file:', uploadErr);
-          setUploadError(uploadErr.message || 'Error processing file. Using file name as reference.');
+        } catch (uploadErr: unknown) {
+          debugLog('[MATERIAL_UPLOAD] Error processing file:', uploadErr);
+          setUploadError((uploadErr as Error).message || 'Error processing file. Using file name as reference.');
           
           // Fallback to using the file name as a reference
-          fileUrl = `/downloads/${newMaterial.file.name}`;
-          fileSize = formatFileSize(newMaterial.file.size);
+          if (newMaterial.file) {
+            fileUrl = `/downloads/${newMaterial.file.name}`;
+            fileSize = formatFileSize(newMaterial.file.size);
+            debugLog('[MATERIAL_UPLOAD] Using fallback file reference:', fileUrl);
+          }
+        }
+      }
+      
+      // Handle content file upload if provided
+      if (newMaterial.contentFile) {
+        try {
+          debugLog('[MATERIAL_UPLOAD] Preparing to upload content file to Supabase Storage:', {
+            fileName: newMaterial.contentFile.name,
+            fileType: newMaterial.contentFile.type,
+            fileSize: newMaterial.contentFile.size
+          });
+          
+          // Use the uploadFileToStorage function from supabase.ts
+          const contentPublicUrl = await uploadFileToStorage(newMaterial.contentFile, 'materials');
+          contentUrl = contentPublicUrl;
+          debugLog('[MATERIAL_UPLOAD] Content file successfully uploaded to Supabase Storage:', contentPublicUrl);
+        } catch (contentUploadErr: unknown) {
+          debugLog('[MATERIAL_UPLOAD] Error uploading content file:', contentUploadErr);
+          alert(`Failed to upload content file: ${(contentUploadErr as Error).message || 'Unknown error'}`);
+          // Continue with the process, just use the text URL if provided
+        }
+      }
+      
+      // Handle thumbnail file upload if provided
+      if (newMaterial.thumbnailFile) {
+        try {
+          debugLog('[MATERIAL_UPLOAD] Preparing to upload thumbnail file to Supabase Storage:', {
+            fileName: newMaterial.thumbnailFile.name,
+            fileType: newMaterial.thumbnailFile.type,
+            fileSize: newMaterial.thumbnailFile.size
+          });
+          
+          // For thumbnails, prefer the 'covers' bucket as it's meant for images
+          const thumbnailPublicUrl = await uploadFileToStorage(newMaterial.thumbnailFile, 'covers');
+          thumbnailUrl = thumbnailPublicUrl;
+          debugLog('[MATERIAL_UPLOAD] Thumbnail file successfully uploaded to Supabase Storage:', thumbnailPublicUrl);
+        } catch (thumbnailUploadErr: unknown) {
+          debugLog('[MATERIAL_UPLOAD] Error uploading thumbnail file:', thumbnailUploadErr);
+          alert(`Failed to upload thumbnail file: ${(thumbnailUploadErr as Error).message || 'Unknown error'}`);
+          // Continue with the process, just use the text URL if provided
         }
       }
       
       // Save the material to the database
+      debugLog('[MATERIAL_UPLOAD] Saving material to database', {
+        bookId: selectedBook,
+        title: newMaterial.title,
+        type: newMaterial.type,
+        fileUrl,
+        fileSize,
+        contentUrl,
+        thumbnailUrl
+      });
+      
       const { data, error } = await supabase
         .from('materials')
         .insert({
@@ -174,11 +382,18 @@ const AdminMaterialsPage: React.FC = () => {
           description: newMaterial.description,
           type: newMaterial.type,
           fileurl: fileUrl, // Using snake_case for the database field
-          filesize: fileSize // Using snake_case for the database field
+          filesize: fileSize, // Using snake_case for the database field
+          contenturl: contentUrl || '', // Using snake_case for the database field
+          thumbnailurl: thumbnailUrl || '' // Using snake_case for the database field
         })
         .select();
       
-      if (error) throw error;
+      if (error) {
+        debugLog('[MATERIAL_UPLOAD] Database insert error:', error);
+        throw error;
+      }
+      
+      debugLog('[MATERIAL_UPLOAD] Material saved to database successfully:', data);
       
       // Update UI
       const bookTitle = allBooks.find(book => book.id === selectedBook)?.title || 'Unknown Book';
@@ -189,9 +404,12 @@ const AdminMaterialsPage: React.FC = () => {
             ...data[0],
             bookTitle,
             fileUrl: data[0].fileurl,
-            fileSize: data[0].filesize
+            fileSize: data[0].filesize,
+            contentUrl: data[0].contenturl,
+            thumbnailUrl: data[0].thumbnailurl
           }
         ]);
+        debugLog('[MATERIAL_UPLOAD] UI updated with new material');
       }
       
       // Reset form and close modal
@@ -199,13 +417,18 @@ const AdminMaterialsPage: React.FC = () => {
         title: '',
         description: '',
         type: 'pdf',
-        file: null
+        file: null,
+        contentUrl: '',
+        contentFile: null,
+        thumbnailUrl: '',
+        thumbnailFile: null
       });
       setSelectedBook('');
       setUploadModalOpen(false);
-    } catch (err: any) {
-      console.error('Error uploading material:', err);
-      alert('Failed to upload material: ' + err.message);
+      debugLog('[MATERIAL_UPLOAD] Material upload process completed successfully');
+    } catch (err: unknown) {
+      debugLog('[MATERIAL_UPLOAD] Error uploading material:', err);
+      alert('Failed to upload material: ' + (err as Error).message);
     } finally {
       setIsUploading(false);
     }
@@ -223,25 +446,138 @@ const AdminMaterialsPage: React.FC = () => {
     
     try {
       setIsUploading(true);
+      debugLog('[MATERIAL_UPDATE] Starting material update process', {
+        materialId: editingMaterial.id,
+        materialTitle: editingMaterial.title,
+        materialType: editingMaterial.type,
+        hasNewFile: !!editFile,
+        fileName: editFile?.name,
+        fileType: editFile?.type,
+        fileSize: editFile?.size,
+        hasNewContentFile: !!editContentFile,
+        hasNewThumbnailFile: !!editThumbnailFile
+      });
       
-      let updatedMaterial = { ...editingMaterial };
+      // Ensure the materials bucket exists before uploading
+      debugLog('[MATERIAL_UPDATE] Ensuring materials bucket exists');
+      const bucketReady = await ensureMaterialsBucketExists();
+      if (!bucketReady) {
+        debugLog('[MATERIAL_UPDATE] Failed to ensure materials bucket exists');
+        throw new Error('Failed to ensure materials bucket exists');
+      }
+      debugLog('[MATERIAL_UPDATE] Materials bucket is ready');
+      
+      const updatedMaterial = { ...editingMaterial };
       
       // Process file if a new one was uploaded
       if (editFile) {
+        debugLog('[MATERIAL_UPDATE] Processing new file for update');
         if (editingMaterial.type === 'image' && editFile.type.startsWith('image/')) {
           // Convert image to base64
+          debugLog('[MATERIAL_UPDATE] Converting image file to base64');
           const base64Data = await convertFileToBase64(editFile);
           updatedMaterial.fileUrl = base64Data;
+          debugLog('[MATERIAL_UPDATE] Image file converted to base64 successfully');
         } else {
-          // For other file types, generate file path
-          const fileName = `${Date.now()}-${editFile.name}`;
-          updatedMaterial.fileUrl = `/downloads/${fileName}`;
+          // For non-image files, upload to Supabase Storage
+          debugLog('[MATERIAL_UPDATE] Preparing to upload non-image file to Supabase Storage:', {
+            fileName: editFile.name,
+            fileType: editFile.type,
+            fileSize: editFile.size
+          });
+          
+          try {
+            // Use the uploadFileToStorage function from supabase.ts
+            debugLog('[MATERIAL_UPDATE] Calling uploadFileToStorage function');
+            const publicUrl = await uploadFileToStorage(editFile, 'materials');
+            updatedMaterial.fileUrl = publicUrl;
+            debugLog('[MATERIAL_UPDATE] File successfully uploaded to Supabase Storage:', publicUrl);
+            
+            // Verify the file exists in storage
+            try {
+              debugLog('[MATERIAL_UPDATE] Verifying file exists in materials bucket');
+              const { data: fileList, error: listError } = await supabase.storage
+                .from('materials')
+                .list();
+              
+              if (listError) {
+                debugLog('[MATERIAL_UPDATE] Error listing files in materials bucket:', listError);
+              } else {
+                debugLog('[MATERIAL_UPDATE] Files in materials bucket:', fileList);
+                
+                // Check if our file is in the list
+                const fileExists = fileList.some(f => publicUrl.includes(f.name));
+                debugLog('[MATERIAL_UPDATE] File exists in bucket:', fileExists);
+                
+                if (!fileExists) {
+                  debugLog('[MATERIAL_UPDATE] File not found in bucket after upload. URL may be incorrect or file not uploaded properly.');
+                }
+              }
+            } catch (verifyError: unknown) {
+              debugLog('[MATERIAL_UPDATE] Error verifying file in storage:', verifyError);
+            }
+          } catch (storageError: unknown) {
+            debugLog('[MATERIAL_UPDATE] Supabase Storage upload failed:', storageError);
+            throw new Error(`Failed to upload to Supabase Storage: ${(storageError as Error).message || 'Unknown error'}`);
+          }
         }
         
         updatedMaterial.fileSize = formatFileSize(editFile.size);
+      } else {
+        debugLog('[MATERIAL_UPDATE] No new file uploaded, keeping existing file');
+      }
+      
+      // Process content file if a new one was uploaded
+      if (editContentFile) {
+        try {
+          debugLog('[MATERIAL_UPDATE] Preparing to upload new content file to Supabase Storage:', {
+            fileName: editContentFile.name,
+            fileType: editContentFile.type,
+            fileSize: editContentFile.size
+          });
+          
+          // Use the uploadFileToStorage function from supabase.ts
+          const contentPublicUrl = await uploadFileToStorage(editContentFile, 'materials');
+          updatedMaterial.contentUrl = contentPublicUrl;
+          debugLog('[MATERIAL_UPDATE] Content file successfully uploaded to Supabase Storage:', contentPublicUrl);
+        } catch (contentUploadErr: unknown) {
+          debugLog('[MATERIAL_UPDATE] Error uploading content file:', contentUploadErr);
+          alert(`Failed to upload content file: ${(contentUploadErr as Error).message || 'Unknown error'}`);
+          // Continue with the process, just use the existing URL
+        }
+      }
+      
+      // Process thumbnail file if a new one was uploaded
+      if (editThumbnailFile) {
+        try {
+          debugLog('[MATERIAL_UPDATE] Preparing to upload new thumbnail file to Supabase Storage:', {
+            fileName: editThumbnailFile.name,
+            fileType: editThumbnailFile.type,
+            fileSize: editThumbnailFile.size
+          });
+          
+          // For thumbnails, prefer the 'covers' bucket as it's meant for images
+          const thumbnailPublicUrl = await uploadFileToStorage(editThumbnailFile, 'covers');
+          updatedMaterial.thumbnailUrl = thumbnailPublicUrl;
+          debugLog('[MATERIAL_UPDATE] Thumbnail file successfully uploaded to Supabase Storage:', thumbnailPublicUrl);
+        } catch (thumbnailUploadErr: unknown) {
+          debugLog('[MATERIAL_UPDATE] Error uploading thumbnail file:', thumbnailUploadErr);
+          alert(`Failed to upload thumbnail file: ${(thumbnailUploadErr as Error).message || 'Unknown error'}`);
+          // Continue with the process, just use the existing URL
+        }
       }
       
       // Update in database
+      debugLog('[MATERIAL_UPDATE] Updating material in database', {
+        materialId: updatedMaterial.id,
+        title: updatedMaterial.title,
+        type: updatedMaterial.type,
+        fileUrl: updatedMaterial.fileUrl,
+        fileSize: updatedMaterial.fileSize,
+        contentUrl: updatedMaterial.contentUrl,
+        thumbnailUrl: updatedMaterial.thumbnailUrl
+      });
+      
       const { error } = await supabase
         .from('materials')
         .update({
@@ -249,24 +585,35 @@ const AdminMaterialsPage: React.FC = () => {
           description: updatedMaterial.description,
           type: updatedMaterial.type,
           fileurl: updatedMaterial.fileUrl,
-          filesize: updatedMaterial.fileSize
+          filesize: updatedMaterial.fileSize,
+          contenturl: updatedMaterial.contentUrl || '',
+          thumbnailurl: updatedMaterial.thumbnailUrl || ''
         })
         .eq('id', updatedMaterial.id);
       
-      if (error) throw error;
+      if (error) {
+        debugLog('[MATERIAL_UPDATE] Database update error:', error);
+        throw error;
+      }
+      
+      debugLog('[MATERIAL_UPDATE] Material updated in database successfully');
       
       // Update in UI
       setMaterials(materials.map(m => 
         m.id === updatedMaterial.id ? updatedMaterial : m
       ));
+      debugLog('[MATERIAL_UPDATE] UI updated with updated material');
       
       // Close modal and reset state
       setEditModalOpen(false);
       setEditingMaterial(null);
       setEditFile(null);
-    } catch (err: any) {
-      console.error('Error updating material:', err);
-      alert('Failed to update material: ' + err.message);
+      setEditContentFile(null);
+      setEditThumbnailFile(null);
+      debugLog('[MATERIAL_UPDATE] Material update process completed successfully');
+    } catch (err: unknown) {
+      debugLog('[MATERIAL_UPDATE] Error updating material:', err);
+      alert('Failed to update material: ' + (err as Error).message);
     } finally {
       setIsUploading(false);
     }
@@ -312,6 +659,101 @@ const AdminMaterialsPage: React.FC = () => {
     material.bookTitle?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Test function to check Supabase storage
+  const testSupabaseStorage = async () => {
+    debugLog('TESTING: Starting Supabase storage test');
+    setTestResult('Testing...');
+    
+    try {
+      // 1. Check if materials bucket exists
+      debugLog('TESTING: Checking if materials bucket exists');
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        debugLog('TESTING: Error listing buckets:', bucketsError);
+        setTestResult(`Error listing buckets: ${bucketsError.message}`);
+        return;
+      }
+      
+      const bucketExists = buckets.some(bucket => bucket.name === 'materials');
+      debugLog('TESTING: Materials bucket exists:', bucketExists);
+      
+      if (!bucketExists) {
+        debugLog('TESTING: Materials bucket does not exist, attempting to create it');
+        const { error: createError } = await supabase.storage.createBucket('materials', {
+          public: true
+        });
+        
+        if (createError) {
+          debugLog('TESTING: Error creating materials bucket:', createError);
+          setTestResult(`Error creating materials bucket: ${createError.message}`);
+          return;
+        }
+        
+        debugLog('TESTING: Materials bucket created successfully');
+      }
+      
+      // 2. List files in the materials bucket
+      debugLog('TESTING: Listing files in materials bucket');
+      const { data: files, error: filesError } = await supabase.storage
+        .from('materials')
+        .list();
+      
+      if (filesError) {
+        debugLog('TESTING: Error listing files in materials bucket:', filesError);
+        setTestResult(`Error listing files: ${filesError.message}`);
+        return;
+      }
+      
+      debugLog('TESTING: Files in materials bucket:', files);
+      
+      // 3. Test uploading a small test file
+      debugLog('TESTING: Creating a test file for upload');
+      const testBlob = new Blob(['Test file content'], { type: 'text/plain' });
+      const testFile = new File([testBlob], 'test_file.txt', { type: 'text/plain' });
+      
+      debugLog('TESTING: Uploading test file to materials bucket');
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('materials')
+        .upload(`test_${Date.now()}.txt`, testFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'text/plain'
+        });
+      
+      if (uploadError) {
+        debugLog('TESTING: Error uploading test file:', uploadError);
+        setTestResult(`Error uploading test file: ${uploadError.message}`);
+        return;
+      }
+      
+      debugLog('TESTING: Test file uploaded successfully:', uploadData);
+      
+      // 4. Get public URL for the test file
+      const { data: urlData } = supabase.storage
+        .from('materials')
+        .getPublicUrl(uploadData.path);
+      
+      debugLog('TESTING: Generated public URL for test file:', urlData.publicUrl);
+      
+      // 5. List files again to verify the test file is there
+      const { data: updatedFiles, error: updatedFilesError } = await supabase.storage
+        .from('materials')
+        .list();
+      
+      if (updatedFilesError) {
+        debugLog('TESTING: Error listing updated files:', updatedFilesError);
+      } else {
+        debugLog('TESTING: Updated files in materials bucket:', updatedFiles);
+      }
+      
+      setTestResult(`Test completed successfully. Files in bucket: ${updatedFiles ? updatedFiles.length : 'unknown'}`);
+    } catch (error: unknown) {
+      debugLog('TESTING: Unexpected error during test:', error);
+      setTestResult(`Unexpected error: ${(error as Error).message || 'Unknown error'}`);
+    }
+  };
+
   if (!isAuthenticated) {
     navigate('/admin/login');
     return null;
@@ -327,6 +769,18 @@ const AdminMaterialsPage: React.FC = () => {
         >
           <Plus size={18} className="mr-2" />
           Upload New Material
+        </button>
+        <button
+          onClick={testSupabaseStorage}
+          className="bg-primary-600 hover:bg-primary-500 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center"
+        >
+          Test Supabase Storage
+        </button>
+        <button
+          onClick={() => setShowDebugPanel(!showDebugPanel)}
+          className="bg-primary-600 hover:bg-primary-500 text-white font-medium py-2 px-4 rounded-lg transition-colors inline-flex items-center"
+        >
+          Toggle Debug Panel
         </button>
       </div>
       
@@ -573,6 +1027,82 @@ const AdminMaterialsPage: React.FC = () => {
                 </div>
               </div>
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Content URL
+                </label>
+                <div className="flex space-x-2">
+                  <input 
+                    type="text"
+                    value={newMaterial.contentUrl}
+                    onChange={(e) => setNewMaterial({...newMaterial, contentUrl: e.target.value})}
+                    placeholder="Enter content URL or upload a file"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <div className="relative">
+                    <input
+                      id="content-file-upload" 
+                      name="content-file-upload" 
+                      type="file" 
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setNewMaterial({...newMaterial, contentFile: e.target.files[0]});
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="content-file-upload" 
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload
+                    </label>
+                  </div>
+                </div>
+                {newMaterial.contentFile && (
+                  <p className="mt-1 text-sm text-gray-500">Selected file: {newMaterial.contentFile.name}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thumbnail URL
+                </label>
+                <div className="flex space-x-2">
+                  <input 
+                    type="text"
+                    value={newMaterial.thumbnailUrl}
+                    onChange={(e) => setNewMaterial({...newMaterial, thumbnailUrl: e.target.value})}
+                    placeholder="Enter thumbnail URL or upload a file"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <div className="relative">
+                    <input
+                      id="thumbnail-file-upload" 
+                      name="thumbnail-file-upload" 
+                      type="file" 
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setNewMaterial({...newMaterial, thumbnailFile: e.target.files[0]});
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="thumbnail-file-upload" 
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload
+                    </label>
+                  </div>
+                </div>
+                {newMaterial.thumbnailFile && (
+                  <p className="mt-1 text-sm text-gray-500">Selected file: {newMaterial.thumbnailFile.name}</p>
+                )}
+              </div>
+              
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
@@ -709,6 +1239,82 @@ const AdminMaterialsPage: React.FC = () => {
                 </div>
               </div>
               
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Content URL
+                </label>
+                <div className="flex space-x-2">
+                  <input 
+                    type="text"
+                    value={editingMaterial.contentUrl}
+                    onChange={(e) => setEditingMaterial({...editingMaterial, contentUrl: e.target.value})}
+                    placeholder="Enter content URL or upload a file"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <div className="relative">
+                    <input
+                      id="edit-content-file-upload" 
+                      name="edit-content-file-upload" 
+                      type="file" 
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditContentFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="edit-content-file-upload" 
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload
+                    </label>
+                  </div>
+                </div>
+                {editContentFile && (
+                  <p className="mt-1 text-sm text-gray-500">Selected file: {editContentFile.name}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thumbnail URL
+                </label>
+                <div className="flex space-x-2">
+                  <input 
+                    type="text"
+                    value={editingMaterial.thumbnailUrl}
+                    onChange={(e) => setEditingMaterial({...editingMaterial, thumbnailUrl: e.target.value})}
+                    placeholder="Enter thumbnail URL or upload a file"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                  <div className="relative">
+                    <input
+                      id="edit-thumbnail-file-upload" 
+                      name="edit-thumbnail-file-upload" 
+                      type="file" 
+                      className="sr-only"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setEditThumbnailFile(e.target.files[0]);
+                        }
+                      }}
+                    />
+                    <label 
+                      htmlFor="edit-thumbnail-file-upload" 
+                      className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      <Upload size={16} className="mr-2" />
+                      Upload
+                    </label>
+                  </div>
+                </div>
+                {editThumbnailFile && (
+                  <p className="mt-1 text-sm text-gray-500">Selected file: {editThumbnailFile.name}</p>
+                )}
+              </div>
+              
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
@@ -716,6 +1322,8 @@ const AdminMaterialsPage: React.FC = () => {
                     setEditModalOpen(false);
                     setEditingMaterial(null);
                     setEditFile(null);
+                    setEditContentFile(null);
+                    setEditThumbnailFile(null);
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                   disabled={isUploading}
@@ -740,6 +1348,24 @@ const AdminMaterialsPage: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      
+      {testResult && (
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+          <h2 className="text-lg font-medium mb-2">Test Result:</h2>
+          <p className="text-sm">{testResult}</p>
+        </div>
+      )}
+      
+      {showDebugPanel && (
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6">
+          <h2 className="text-lg font-medium mb-2">Debug Logs:</h2>
+          <div className="overflow-y-auto max-h-96">
+            {debugLogs.map((log, index) => (
+              <p key={index} className="text-sm">{log}</p>
+            ))}
           </div>
         </div>
       )}

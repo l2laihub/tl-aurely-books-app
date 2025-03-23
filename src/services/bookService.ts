@@ -46,9 +46,17 @@ export function formatFileSize(bytes: number): string {
 // Upload a file and return its URL
 export async function uploadFile(file: File): Promise<{ fileUrl: string; fileSize: string }> {
   try {
+    console.log('[UPLOAD_FILE] Starting file upload process', {
+      fileName: file.name,
+      fileType: file.type,
+      fileSize: file.size
+    });
+    
     // For image types, convert to base64 and return
     if (file.type.startsWith('image/')) {
+      console.log('[UPLOAD_FILE] File is an image, converting to base64');
       const base64Data = await convertFileToBase64(file);
+      console.log('[UPLOAD_FILE] Image successfully converted to base64');
       return {
         fileUrl: base64Data,
         fileSize: formatFileSize(file.size)
@@ -57,20 +65,22 @@ export async function uploadFile(file: File): Promise<{ fileUrl: string; fileSiz
     
     // For non-image files, try to use Supabase Storage
     try {
+      console.log('[UPLOAD_FILE] File is not an image, uploading to Supabase Storage');
       // Try to upload to storage bucket
       const publicUrl = await uploadFileToStorage(file, 'materials');
+      console.log('[UPLOAD_FILE] File successfully uploaded to Supabase Storage:', publicUrl);
       return {
         fileUrl: publicUrl,
         fileSize: formatFileSize(file.size)
       };
     } catch (storageError) {
-      console.error('Storage upload failed:', storageError);
+      console.error('[UPLOAD_FILE] Storage upload failed:', storageError);
       
       // Fallback for storage errors: use a temporary URL with the file as a blob
       const blobUrl = URL.createObjectURL(file);
       
       // In a real app, we'd need to handle this better
-      console.warn('Using temporary blob URL. This will not persist across sessions.');
+      console.warn('[UPLOAD_FILE] Using temporary blob URL. This will not persist across sessions.');
       
       return {
         fileUrl: `/downloads/${Date.now()}-${file.name}`, // Reference path
@@ -78,7 +88,7 @@ export async function uploadFile(file: File): Promise<{ fileUrl: string; fileSiz
       };
     }
   } catch (err) {
-    console.error('Error uploading file:', err);
+    console.error('[UPLOAD_FILE] Error uploading file:', err);
     throw err;
   }
 }

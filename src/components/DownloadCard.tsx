@@ -45,45 +45,70 @@ const DownloadCard: React.FC<DownloadCardProps> = ({ material }) => {
         return;
       }
       
-      // For Supabase Storage URLs
-      if (material.fileUrl.includes('supabase.co') || material.fileUrl.includes('supabase.in')) {
-        window.open(material.fileUrl, '_blank');
-        return;
-      }
+      // For all URLs (Supabase, reference paths, absolute URLs)
+      // Use a unified approach with proper error handling
       
-      // For reference paths to public files
-      if (material.fileUrl.startsWith('/downloads/')) {
-        // Try to fetch and download the file
-        fetch(material.fileUrl)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('File not found or cannot be accessed');
+      // Create a temporary anchor element to check if the URL is from the same origin
+      const tempLink = document.createElement('a');
+      tempLink.href = material.fileUrl;
+      
+      // Check if URL is absolute (has protocol) or is a Supabase URL
+      const isAbsoluteUrl = /^https?:\/\//i.test(material.fileUrl);
+      const isSupabaseUrl = material.fileUrl.includes('supabase.co') || material.fileUrl.includes('supabase.in');
+      
+      // For Supabase URLs or other external URLs that might have CORS issues,
+      // we'll try to fetch with no-cors mode if the regular fetch fails
+      const fetchOptions: RequestInit = {};
+      
+      // Try to fetch the file
+      fetch(material.fileUrl, fetchOptions)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('File not found or cannot be accessed');
+          }
+          return response.blob();
+        })
+        .then(blob => {
+          // Get a more accurate filename from Content-Disposition header or URL
+          let filename = '';
+          
+          // Try to get filename from URL
+          if (material.fileUrl.includes('/')) {
+            const urlParts = material.fileUrl.split('/');
+            const lastPart = urlParts[urlParts.length - 1];
+            if (lastPart && lastPart.includes('.')) {
+              filename = decodeURIComponent(lastPart.split('?')[0]); // Remove query parameters
             }
-            return response.blob();
-          })
-          .then(blob => {
-            // Create a blob URL and trigger download
-            const blobUrl = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = blobUrl;
-            link.download = material.fileUrl.split('/').pop() || getFileName();
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(blobUrl); // Clean up
-          })
-          .catch(error => {
-            console.error('Download error:', error);
-            
-            // Handle error - show message and fallback to opening in new tab
-            alert('This file is not available for direct download. It will open in a new tab if available.');
+          }
+          
+          // If we couldn't get a filename from the URL, use the generated one
+          if (!filename) {
+            filename = getFileName();
+          }
+          
+          // Create a blob URL and trigger download
+          const blobUrl = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl); // Clean up
+        })
+        .catch(error => {
+          console.error('Download error:', error);
+          
+          // If it's a CORS error or network error for an absolute URL,
+          // try opening in a new tab as a fallback
+          if (isAbsoluteUrl || isSupabaseUrl) {
+            console.log('Attempting to open in new tab as fallback');
             window.open(material.fileUrl, '_blank');
-          });
-        return;
-      }
-      
-      // For absolute URLs (external files)
-      window.open(material.fileUrl, '_blank');
+          } else {
+            // For relative URLs that failed, show a more specific error
+            alert('Failed to download file. The file may not exist or is not accessible.');
+          }
+        });
       
     } catch (error) {
       console.error('Error during download:', error);
