@@ -2,33 +2,59 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getBookById } from '../services/bookService';
 import DownloadCard from '../components/DownloadCard';
-import { Calendar, Book, FileText, ArrowLeft, Star, Download, Video, Music, Loader, AlertCircle } from 'lucide-react';
+import { Calendar, Book, FileText, ArrowLeft, Star, Download, Video, Music, Loader, ShoppingCart } from 'lucide-react';
+
+// Define types for book and material
+interface BookType {
+  id: string;
+  title: string;
+  author: string;
+  description: string;
+  coverImage: string;
+  publishDate: string;
+  isbn: string;
+  pages: number;
+  ageRange: string;
+  genres: string[];
+  amazonLink?: string;
+  reviewLink?: string;
+  downloadMaterials?: MaterialType[];
+}
+
+interface MaterialType {
+  id: string;
+  book_id: string;
+  title: string;
+  description: string;
+  type: string;
+  fileUrl: string;
+  fileSize: string;
+}
 
 const BookDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [book, setBook] = useState<any | null>(null);
+  const [book, setBook] = useState<BookType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      loadBook(id);
-    }
+    const fetchBookDetails = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const bookData = await getBookById(id);
+        setBook(bookData);
+        setIsLoading(false);
+      } catch (err) {
+        console.error('Error fetching book details:', err);
+        setError('Failed to load book details. Please try again later.');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchBookDetails();
   }, [id]);
-
-  const loadBook = async (bookId: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const bookData = await getBookById(bookId);
-      setBook(bookData);
-    } catch (err: any) {
-      console.error('Error loading book:', err);
-      setError('Failed to load book details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -74,22 +100,29 @@ const BookDetails: React.FC = () => {
             <div className="md:w-1/3 bg-gradient-to-br from-primary-100 to-secondary-100 flex justify-center items-center p-8">
               <div className="relative">
                 <div className="absolute -inset-2 bg-accent-300 rounded-2xl transform rotate-6 transition-all duration-300 hover:rotate-0"></div>
-                <img 
-                  src={book.coverImage} 
-                  alt={book.title}
-                  className="relative rounded-2xl shadow-lg max-h-[500px] object-cover z-10"
-                />
+                {book.coverImage ? (
+                  <img 
+                    src={book.coverImage} 
+                    alt={`${book.title} cover`}
+                    className="relative rounded-2xl shadow-lg max-h-[500px] object-cover z-10"
+                  />
+                ) : (
+                  <div className="relative rounded-2xl shadow-lg max-h-[500px] bg-gray-200 flex items-center justify-center z-10 w-[300px] h-[450px]">
+                    <FileText size={48} className="text-gray-400" />
+                  </div>
+                )}
               </div>
             </div>
+            
             <div className="md:w-2/3 p-8">
               <div className="bg-accent-500 text-white px-3 py-1 rounded-full inline-block mb-4 font-medium shadow-md">
-                For ages {book.ageRange}
+                For ages {book.ageRange || 'All'}
               </div>
               <h1 className="text-3xl md:text-4xl font-bold mb-2 font-display text-primary-800">{book.title}</h1>
               <p className="text-xl text-primary-600 mb-4 font-body">by {book.author}</p>
               
               <div className="flex flex-wrap gap-2 mb-6">
-                {book.genre.map((genre: string, index: number) => (
+                {book.genres && book.genres.length > 0 && book.genres.map((genre: string, index: number) => (
                   <span 
                     key={index}
                     className="text-sm px-3 py-1 bg-secondary-100 text-secondary-700 rounded-full font-body"
@@ -113,6 +146,37 @@ const BookDetails: React.FC = () => {
                   <span>ISBN: {book.isbn}</span>
                 </div>
               </div>
+              
+              {/* External Links Section */}
+              {(book.amazonLink || book.reviewLink) && (
+                <div className="flex flex-wrap gap-3 mb-6">
+                  {book.amazonLink && (
+                    <a 
+                      href={book.amazonLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium py-2 px-4 rounded-full transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                      aria-label="View on Amazon"
+                    >
+                      <ShoppingCart size={18} className="mr-2" />
+                      View on Amazon
+                    </a>
+                  )}
+                  
+                  {book.reviewLink && (
+                    <a 
+                      href={book.reviewLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center bg-gradient-to-r from-secondary-500 to-secondary-600 text-white font-medium py-2 px-4 rounded-full transition-all duration-300 hover:shadow-md hover:-translate-y-1"
+                      aria-label="Read Reviews"
+                    >
+                      <Star size={18} className="mr-2" />
+                      Read Reviews
+                    </a>
+                  )}
+                </div>
+              )}
               
               <div className="border-t border-primary-100 py-6">
                 <h3 className="text-xl font-semibold mb-4 font-display text-primary-800">About this book</h3>
@@ -160,7 +224,7 @@ const BookDetails: React.FC = () => {
           </p>
           {book.downloadMaterials && book.downloadMaterials.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {book.downloadMaterials.map((material: any) => (
+              {book.downloadMaterials.map((material: MaterialType) => (
                 <DownloadCard key={material.id} material={material} />
               ))}
             </div>

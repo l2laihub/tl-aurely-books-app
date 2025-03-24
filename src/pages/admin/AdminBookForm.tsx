@@ -32,7 +32,9 @@ const AdminBookForm: React.FC = () => {
     pages: 0,
     ageRange: '',
     coverImage: '',
-    genres: [''] // Initialize with one empty genre
+    genres: [''], // Initialize with one empty genre
+    amazonLink: '',
+    reviewLink: ''
   });
   
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -158,7 +160,9 @@ const AdminBookForm: React.FC = () => {
         pages: book.pages,
         ageRange: book.ageRange,
         coverImage: book.coverImage,
-        genres: book.genre.length > 0 ? book.genre : ['']
+        genres: book.genre.length > 0 ? book.genre : [''],
+        amazonLink: book.amazonLink,
+        reviewLink: book.reviewLink
       });
       
       setMaterials(book.downloadMaterials || []);
@@ -718,6 +722,32 @@ const AdminBookForm: React.FC = () => {
                 onChange={handleChange}
                 required
                 min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Amazon Link
+              </label>
+              <input
+                type="text"
+                name="amazonLink"
+                value={formState.amazonLink}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Review Link
+              </label>
+              <input
+                type="text"
+                name="reviewLink"
+                value={formState.reviewLink}
+                onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
             </div>

@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
 import { uploadFileToStorage } from '../lib/supabase';
 
 export type BookFormData = {
@@ -13,6 +12,8 @@ export type BookFormData = {
   pages: number;
   ageRange: string;
   genres: string[];
+  amazonLink?: string;  // New field for Amazon link
+  reviewLink?: string;  // New field for review link
 };
 
 export type Material = {
@@ -77,7 +78,8 @@ export async function uploadFile(file: File): Promise<{ fileUrl: string; fileSiz
       console.error('[UPLOAD_FILE] Storage upload failed:', storageError);
       
       // Fallback for storage errors: use a temporary URL with the file as a blob
-      const blobUrl = URL.createObjectURL(file);
+      // Create a blob URL for debugging purposes
+      URL.createObjectURL(file); // Create but don't store, for debugging only
       
       // In a real app, we'd need to handle this better
       console.warn('[UPLOAD_FILE] Using temporary blob URL. This will not persist across sessions.');
@@ -121,7 +123,9 @@ export async function getAllBooks() {
         ...book,
         ageRange: book.age_range, // Map age_range to ageRange
         coverImage: book.coverimage, // Map coverimage to coverImage
-        publishDate: book.publishdate, // Map publishdate to publishDate
+        publishDate: book.publishdate, // Map publishDate to publishdate
+        amazonLink: book.amazon_link, // Map amazon_link to amazonLink
+        reviewLink: book.review_link, // Map review_link to reviewLink
       };
 
       return {
@@ -197,7 +201,9 @@ export async function getBookById(id: string) {
     ...book,
     ageRange: book.age_range, // Map age_range to ageRange
     coverImage: book.coverimage, // Map coverimage to coverImage
-    publishDate: book.publishdate, // Map publishdate to publishDate
+    publishDate: book.publishdate, // Map publishDate to publishdate
+    amazonLink: book.amazon_link, // Map amazon_link to amazonLink
+    reviewLink: book.review_link, // Map review_link to reviewLink
   };
 
   // Map material database fields to our application's camelCase conventions
@@ -229,6 +235,8 @@ export async function createBook(bookData: BookFormData, materials: Material[]) 
       isbn: bookData.isbn,
       pages: bookData.pages,
       age_range: bookData.ageRange, // Map ageRange to age_range
+      amazon_link: bookData.amazonLink, // Map amazonLink to amazon_link
+      review_link: bookData.reviewLink, // Map reviewLink to review_link
     })
     .select('id')
     .single();
@@ -284,6 +292,8 @@ export async function updateBook(bookId: string, bookData: BookFormData, materia
       isbn: bookData.isbn,
       pages: bookData.pages,
       age_range: bookData.ageRange, // Map ageRange to age_range
+      amazon_link: bookData.amazonLink, // Map amazonLink to amazon_link
+      review_link: bookData.reviewLink, // Map reviewLink to review_link
     })
     .eq('id', bookId);
 
