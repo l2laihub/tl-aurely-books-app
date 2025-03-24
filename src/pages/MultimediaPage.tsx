@@ -29,7 +29,7 @@ const MultimediaPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [multimedia, setMultimedia] = useState<MultimediaContent[]>([]);
-  const [activeTab, setActiveTab] = useState<'video' | 'audio'>('video');
+  const [activeTab, setActiveTab] = useState<'video' | 'audio'>('audio');
   
   useEffect(() => {
     const loadBookAndMultimedia = async (bookId: string) => {
@@ -230,28 +230,6 @@ const MultimediaPage: React.FC = () => {
         <div className="flex border-b border-gray-200 mb-8" role="tablist" aria-label="Multimedia content">
           <button
             className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
-              activeTab === 'video'
-                ? 'border-primary-600 text-primary-800'
-                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-primary-300'
-            }`}
-            onClick={() => setActiveTab('video')}
-            aria-selected={activeTab === 'video' ? 'true' : 'false'}
-            role="tab"
-            aria-controls="video-panel"
-            id="video-tab"
-            title="Show videos and animations"
-          >
-            <Video size={20} className={`mr-2 ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-400'}`} aria-hidden="true" />
-            <span>Videos & Animations</span>
-            {videos.length > 0 && (
-              <span className="ml-2 bg-primary-100 text-primary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                {videos.length}
-              </span>
-            )}
-          </button>
-          
-          <button
-            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
               activeTab === 'audio'
                 ? 'border-secondary-600 text-primary-800'
                 : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-secondary-300'
@@ -271,50 +249,28 @@ const MultimediaPage: React.FC = () => {
               </span>
             )}
           </button>
-        </div>
-        
-        {/* Video Tab Panel */}
-        <div 
-          id="video-panel"
-          role="tabpanel"
-          aria-labelledby="video-tab"
-          className={`transition-opacity duration-300 ${activeTab === 'video' ? 'block' : 'hidden'}`}
-        >
-          {videos.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {videos.map(video => (
-                <VideoPlayer 
-                  key={video.id}
-                  title={video.title}
-                  description={video.description}
-                  videoUrl={video.url}
-                  thumbnailUrl={getThumbnail(video)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl shadow-md p-8 text-center border-2 border-primary-100">
-              <Video size={40} className="mx-auto text-primary-300 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No videos available</h3>
-              <p className="text-primary-600 mb-4 font-body">There are currently no videos for this book.</p>
-              <div className="flex justify-center space-x-4">
-                <Link 
-                  to="/admin/multimedia"
-                  className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <PlusCircle size={16} className="mr-1" />
-                  Add Videos in Admin
-                </Link>
-                <Link 
-                  to={`/book/${id}`}
-                  className="inline-flex items-center bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <ExternalLink size={16} className="mr-1" />
-                  Back to Book
-                </Link>
-              </div>
-            </div>
-          )}
+          
+          <button
+            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
+              activeTab === 'video'
+                ? 'border-primary-600 text-primary-800'
+                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-primary-300'
+            }`}
+            onClick={() => setActiveTab('video')}
+            aria-selected={activeTab === 'video' ? 'true' : 'false'}
+            role="tab"
+            aria-controls="video-panel"
+            id="video-tab"
+            title="Show videos and animations"
+          >
+            <Video size={20} className={`mr-2 ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-400'}`} aria-hidden="true" />
+            <span>Videos & Animations</span>
+            {videos.length > 0 && (
+              <span className="ml-2 bg-primary-100 text-primary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+                {videos.length}
+              </span>
+            )}
+          </button>
         </div>
         
         {/* Audio Tab Panel */}
@@ -352,6 +308,50 @@ const MultimediaPage: React.FC = () => {
                 <Link 
                   to={`/book/${id}`}
                   className="inline-flex items-center bg-white border border-secondary-600 text-secondary-600 hover:bg-secondary-50 py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <ExternalLink size={16} className="mr-1" />
+                  Back to Book
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* Video Tab Panel */}
+        <div 
+          id="video-panel"
+          role="tabpanel"
+          aria-labelledby="video-tab"
+          className={`transition-opacity duration-300 ${activeTab === 'video' ? 'block' : 'hidden'}`}
+        >
+          {videos.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {videos.map(video => (
+                <VideoPlayer 
+                  key={video.id}
+                  title={video.title}
+                  description={video.description}
+                  videoUrl={video.url}
+                  thumbnailUrl={getThumbnail(video)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl shadow-md p-8 text-center border-2 border-primary-100">
+              <Video size={40} className="mx-auto text-primary-300 mb-4" />
+              <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No videos available</h3>
+              <p className="text-primary-600 mb-4 font-body">There are currently no videos for this book.</p>
+              <div className="flex justify-center space-x-4">
+                <Link 
+                  to="/admin/multimedia"
+                  className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
+                >
+                  <PlusCircle size={16} className="mr-1" />
+                  Add Videos in Admin
+                </Link>
+                <Link 
+                  to={`/book/${id}`}
+                  className="inline-flex items-center bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
                 >
                   <ExternalLink size={16} className="mr-1" />
                   Back to Book
