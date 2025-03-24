@@ -4,7 +4,7 @@ import { getBookById } from '../services/bookService';
 import { getMultimediaByBookId, initializeMultimediaData, getValidVimeoId } from '../services/multimediaService';
 import VideoPlayer from '../components/VideoPlayer';
 import AudioPlayer from '../components/AudioPlayer';
-import { ArrowLeft, Video, Music, Star, BookOpen, Loader, PlusCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Video, Music, Star, BookOpen, Loader } from 'lucide-react';
 
 interface MultimediaContent {
   id: string;
@@ -174,19 +174,8 @@ const MultimediaPage: React.FC = () => {
 
   return (
     <div className="bg-primary-50 min-h-screen relative">
-      {/* Decorative elements */}
-      <div className="absolute top-40 left-10 w-32 h-24 bg-secondary-200 opacity-20 rounded-bubble animate-float hidden lg:block" style={{ animationDelay: '0.2s' }}></div>
-      <div className="absolute bottom-40 right-10 w-32 h-24 bg-primary-200 opacity-20 rounded-bubble animate-float hidden lg:block" style={{ animationDelay: '1.5s' }}></div>
-      
+      {/* Header section - moved to top for proper loading order */}
       <div className="bg-gradient-to-r from-primary-600 to-secondary-500 text-white py-16 relative overflow-hidden">
-        {/* Decorative elements */}
-        <div className="absolute top-10 left-[10%] animate-float" style={{ animationDelay: "0.5s" }}>
-          <Star size={24} className="text-cream-300 animate-twinkle" style={{ animationDelay: "0.3s" }} />
-        </div>
-        <div className="absolute bottom-10 right-[20%] animate-float" style={{ animationDelay: "0.9s" }}>
-          <Star size={24} className="text-cream-300 animate-twinkle" style={{ animationDelay: "0.7s" }} />
-        </div>
-        
         <div className="container mx-auto px-4 text-center">
           <h1 className="text-3xl md:text-4xl font-bold mb-4 font-display">
             {book.title}: Interactive Content
@@ -195,186 +184,124 @@ const MultimediaPage: React.FC = () => {
             Explore videos, songs, and interactive materials related to {book.title}!
           </p>
         </div>
+        
+        {/* Decorative elements - moved inside header */}
+        <div className="absolute top-10 left-[10%] animate-float" style={{ animationDelay: "0.5s" }}>
+          <Star size={24} className="text-cream-300 animate-twinkle" style={{ animationDelay: "0.3s" }} />
+        </div>
+        <div className="absolute bottom-10 right-[20%] animate-float" style={{ animationDelay: "0.9s" }}>
+          <Star size={24} className="text-cream-300 animate-twinkle" style={{ animationDelay: "0.7s" }} />
+        </div>
       </div>
       
+      {/* Main content container */}
       <div className="container mx-auto px-4 py-12">
+        {/* Navigation tabs - moved up */}
         <div className="mb-8">
-          <Link 
-            to={`/book/${id}`} 
-            className="inline-flex items-center text-primary-600 hover:text-primary-800 transition-colors font-body"
-          >
-            <ArrowLeft size={18} className="mr-2" /> Back to book details
-          </Link>
-        </div>
-
-        {/* Book Summary */}
-        <div className="bg-white rounded-3xl shadow-md p-6 mb-10 border-4 border-primary-200 hover:border-accent-300 transition-all duration-300 transform hover:-translate-y-1">
-          <div className="flex items-center space-x-6">
-            <img 
-              src={book.coverImage} 
-              alt={book.title}
-              className="w-24 h-36 object-cover rounded-lg shadow-md border-2 border-primary-300"
-            />
-            <div>
-              <h2 className="text-2xl font-bold mb-2 font-display text-primary-800">{book.title}</h2>
-              <p className="text-primary-600 mb-2 font-body">by {book.author}</p>
-              <div className="flex items-center text-sm text-primary-500 font-body">
-                <BookOpen size={16} className="mr-1" />
-                <span>For ages {book.ageRange}</span>
-              </div>
-            </div>
+          <div className="flex flex-wrap space-x-4 justify-center">
+            <button
+              onClick={() => setActiveTab('audio')}
+              className={`flex items-center px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'audio'
+                  ? 'bg-accent-500 text-white shadow-md'
+                  : 'bg-white text-primary-700 hover:bg-primary-100'
+              }`}
+            >
+              <Music size={20} className="mr-2" />
+              Audio Content
+            </button>
+            <button
+              onClick={() => setActiveTab('video')}
+              className={`flex items-center px-6 py-3 rounded-full font-medium transition-all duration-300 ${
+                activeTab === 'video'
+                  ? 'bg-accent-500 text-white shadow-md'
+                  : 'bg-white text-primary-700 hover:bg-primary-100'
+              }`}
+            >
+              <Video size={20} className="mr-2" />
+              Video Content
+            </button>
           </div>
         </div>
         
-        {/* Tabs Navigation */}
-        <div className="flex border-b border-gray-200 mb-8" role="tablist" aria-label="Multimedia content">
-          <button
-            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
-              activeTab === 'audio'
-                ? 'border-secondary-600 text-primary-800'
-                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-secondary-300'
-            }`}
-            onClick={() => setActiveTab('audio')}
-            aria-selected={activeTab === 'audio' ? 'true' : 'false'}
-            role="tab"
-            aria-controls="audio-panel"
-            id="audio-tab"
-            title="Show songs and audio"
-          >
-            <Music size={20} className={`mr-2 ${activeTab === 'audio' ? 'text-secondary-600' : 'text-gray-400'}`} aria-hidden="true" />
-            <span>Songs & Audio</span>
-            {audios.length > 0 && (
-              <span className="ml-2 bg-secondary-100 text-secondary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                {audios.length}
-              </span>
-            )}
-          </button>
-          
-          <button
-            className={`py-4 px-6 font-medium text-lg font-display flex items-center transition-all duration-300 border-b-2 ${
-              activeTab === 'video'
-                ? 'border-primary-600 text-primary-800'
-                : 'border-transparent text-gray-500 hover:text-primary-600 hover:border-primary-300'
-            }`}
-            onClick={() => setActiveTab('video')}
-            aria-selected={activeTab === 'video' ? 'true' : 'false'}
-            role="tab"
-            aria-controls="video-panel"
-            id="video-tab"
-            title="Show videos and animations"
-          >
-            <Video size={20} className={`mr-2 ${activeTab === 'video' ? 'text-primary-600' : 'text-gray-400'}`} aria-hidden="true" />
-            <span>Videos & Animations</span>
-            {videos.length > 0 && (
-              <span className="ml-2 bg-primary-100 text-primary-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">
-                {videos.length}
-              </span>
-            )}
-          </button>
-        </div>
-        
-        {/* Audio Tab Panel */}
-        <div 
-          id="audio-panel"
-          role="tabpanel"
-          aria-labelledby="audio-tab"
-          className={`transition-opacity duration-300 ${activeTab === 'audio' ? 'block' : 'hidden'}`}
-        >
-          {audios.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {audios.map(audio => (
-                <AudioPlayer 
-                  key={audio.id}
-                  title={audio.title}
-                  description={audio.description}
-                  audioUrl={audio.url}
-                  imageUrl={getThumbnail(audio)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl shadow-md p-8 text-center border-2 border-secondary-100">
-              <Music size={40} className="mx-auto text-secondary-300 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No audio available</h3>
-              <p className="text-primary-600 mb-4 font-body">There are currently no audio clips or songs for this book.</p>
-              <div className="flex justify-center space-x-4">
-                <Link 
-                  to="/admin/multimedia"
-                  className="inline-flex items-center bg-secondary-600 hover:bg-secondary-500 text-white py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <PlusCircle size={16} className="mr-1" />
-                  Add Audio in Admin
-                </Link>
-                <Link 
-                  to={`/book/${id}`}
-                  className="inline-flex items-center bg-white border border-secondary-600 text-secondary-600 hover:bg-secondary-50 py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <ExternalLink size={16} className="mr-1" />
-                  Back to Book
-                </Link>
+        {/* Content grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {activeTab === 'video' ? (
+            videos.length > 0 ? (
+              videos.map(video => (
+                <div key={video.id} className="bg-white rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 border-2 border-primary-100 hover:border-accent-300">
+                  <div className="relative aspect-video bg-primary-100">
+                    <img 
+                      src={getThumbnail(video)} 
+                      alt={video.title}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-accent-500 bg-opacity-90 flex items-center justify-center cursor-pointer transform transition-transform hover:scale-110">
+                        <Video size={28} className="text-white ml-1" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">{video.title}</h3>
+                    <p className="text-charcoal-600 mb-4 font-body">{video.description}</p>
+                    <VideoPlayer 
+                      title={video.title}
+                      description={video.description}
+                      videoUrl={video.url}
+                      thumbnailUrl={getThumbnail(video)}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <Video size={48} className="mx-auto text-primary-300 mb-4" />
+                <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No videos available</h3>
+                <p className="text-primary-600 font-body">There are currently no videos for this book.</p>
               </div>
-            </div>
+            )
+          ) : (
+            audios.length > 0 ? (
+              audios.map(audio => (
+                <div key={audio.id} className="bg-white rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 border-2 border-primary-100 hover:border-accent-300">
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">{audio.title}</h3>
+                    <p className="text-charcoal-600 mb-4 font-body">{audio.description}</p>
+                    <AudioPlayer 
+                      title={audio.title}
+                      description={audio.description}
+                      audioUrl={audio.url}
+                      imageUrl={getThumbnail(audio)}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12">
+                <Music size={48} className="mx-auto text-primary-300 mb-4" />
+                <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No audio available</h3>
+                <p className="text-primary-600 font-body">There are currently no audio tracks for this book.</p>
+              </div>
+            )
           )}
         </div>
         
-        {/* Video Tab Panel */}
-        <div 
-          id="video-panel"
-          role="tabpanel"
-          aria-labelledby="video-tab"
-          className={`transition-opacity duration-300 ${activeTab === 'video' ? 'block' : 'hidden'}`}
-        >
-          {videos.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {videos.map(video => (
-                <VideoPlayer 
-                  key={video.id}
-                  title={video.title}
-                  description={video.description}
-                  videoUrl={video.url}
-                  thumbnailUrl={getThumbnail(video)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl shadow-md p-8 text-center border-2 border-primary-100">
-              <Video size={40} className="mx-auto text-primary-300 mb-4" />
-              <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">No videos available</h3>
-              <p className="text-primary-600 mb-4 font-body">There are currently no videos for this book.</p>
-              <div className="flex justify-center space-x-4">
-                <Link 
-                  to="/admin/multimedia"
-                  className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <PlusCircle size={16} className="mr-1" />
-                  Add Videos in Admin
-                </Link>
-                <Link 
-                  to={`/book/${id}`}
-                  className="inline-flex items-center bg-white border border-primary-600 text-primary-600 hover:bg-primary-50 py-2 px-4 rounded-full transition-all duration-300 transform hover:-translate-y-1"
-                >
-                  <ExternalLink size={16} className="mr-1" />
-                  Back to Book
-                </Link>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Call to Action */}
-        <div className="bg-gradient-to-r from-cream-50 to-cream-100 rounded-3xl p-8 text-center mt-16 border-2 border-cream-200 shadow-md transform hover:-translate-y-1 transition-all duration-300">
-          <h3 className="text-xl font-bold mb-4 font-display text-primary-800">Want to explore more books?</h3>
-          <p className="text-charcoal-700 mb-6 font-body">
-            Check out our other wonderful books and their interactive content!
-          </p>
+        {/* Back to book details button */}
+        <div className="mt-12 text-center">
           <Link 
-            to="/books" 
-            className="inline-block bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg"
+            to={`/books/${book.id}`}
+            className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
           >
-            Browse All Books
+            <BookOpen size={18} className="mr-2" />
+            Back to Book Details
           </Link>
         </div>
       </div>
+      
+      {/* Decorative elements - moved to bottom since they're just visual */}
+      <div className="absolute top-40 left-10 w-32 h-24 bg-secondary-200 opacity-20 rounded-bubble animate-float hidden lg:block" style={{ animationDelay: '0.2s' }}></div>
+      <div className="absolute bottom-40 right-10 w-32 h-24 bg-primary-200 opacity-20 rounded-bubble animate-float hidden lg:block" style={{ animationDelay: '1.5s' }}></div>
     </div>
   );
 };

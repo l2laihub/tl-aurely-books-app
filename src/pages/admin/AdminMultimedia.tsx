@@ -341,6 +341,7 @@ const AdminMultimedia: React.FC = () => {
   
   return (
     <div>
+      {/* Header section - moved to top for proper loading order */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8">
         <h1 className="text-2xl font-display font-bold text-primary-800 mb-4 md:mb-0">Videos & Songs</h1>
         <button
@@ -352,7 +353,7 @@ const AdminMultimedia: React.FC = () => {
         </button>
       </div>
       
-      {/* Search */}
+      {/* Search - moved up for better UX */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -368,7 +369,7 @@ const AdminMultimedia: React.FC = () => {
         </div>
       </div>
       
-      {/* Error state */}
+      {/* Error state - moved up to be immediately visible */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-start">
           <AlertCircle size={24} className="mr-3 flex-shrink-0 mt-0.5" />
@@ -385,14 +386,14 @@ const AdminMultimedia: React.FC = () => {
         </div>
       )}
       
-      {/* Loading state */}
+      {/* Loading state - moved up for better UX */}
       {isLoading ? (
         <div className="bg-white rounded-xl shadow-md p-12 text-center">
           <Loader size={40} className="animate-spin mx-auto text-primary-600 mb-4" />
           <p className="text-primary-600">Loading multimedia content...</p>
         </div>
       ) : (
-        /* Table */
+        /* Table - main content */
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -488,7 +489,7 @@ const AdminMultimedia: React.FC = () => {
         </div>
       )}
       
-      {/* Add Multimedia Modal */}
+      {/* Modals - kept at the bottom since they're only shown when needed */}
       {uploadModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>

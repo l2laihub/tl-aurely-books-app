@@ -87,6 +87,7 @@ const BookDetails: React.FC = () => {
   return (
     <div className="bg-primary-50 min-h-screen">
       <div className="container mx-auto px-4 py-12">
+        {/* Navigation link - moved to top */}
         <Link 
           to="/books" 
           className="inline-flex items-center text-primary-600 hover:text-primary-800 mb-8 transition-colors font-body"
@@ -94,7 +95,7 @@ const BookDetails: React.FC = () => {
           <ArrowLeft size={18} className="mr-2" /> Back to all books
         </Link>
         
-        {/* Book Details */}
+        {/* Book Details - main content moved to top */}
         <div className="bg-white rounded-3xl shadow-lg overflow-hidden mb-12 border-4 border-primary-200 transition-all duration-300 hover:border-accent-300 hover:shadow-xl">
           <div className="md:flex">
             <div className="md:w-1/3 bg-gradient-to-br from-primary-100 to-secondary-100 flex justify-center items-center p-8">
