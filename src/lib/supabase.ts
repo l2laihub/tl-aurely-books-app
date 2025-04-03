@@ -25,6 +25,20 @@ export async function getSession() {
   return { session: data.session, error };
 }
 
+export async function resetPasswordForEmail(email: string) {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + '/admin/reset-password',
+  });
+  return { data, error };
+}
+
+export async function updateUserPassword(password: string) {
+  const { data, error } = await supabase.auth.updateUser({
+    password: password,
+  });
+  return { data, error };
+}
+
 // Helper function to upload files to Supabase Storage
 export async function uploadFileToStorage(file: File, bucket: string, path?: string): Promise<string> {
   console.log('TEST LOG: uploadFileToStorage function called', { file, bucket, path });

@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -14,6 +14,8 @@ import AdminMaterials from './pages/admin/AdminMaterials';
 import AdminMultimedia from './pages/admin/AdminMultimedia';
 import AdminBookForm from './pages/admin/AdminBookForm';
 import AdminLogin from './pages/admin/AdminLogin';
+import ForgotPassword from './pages/admin/ForgotPassword';
+import ResetPassword from './pages/admin/ResetPassword';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -31,6 +33,8 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
           <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin/forgot-password" element={<ForgotPassword />} />
+          <Route path="/admin/reset-password" element={<ResetPassword />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="books" element={<AdminBooks />} />

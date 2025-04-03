@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { signInWithEmail } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { BookOpen, Lock, Mail } from 'lucide-react';
@@ -32,8 +32,9 @@ const AdminLogin: React.FC = () => {
       if (data?.user) {
         navigate('/admin');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to sign in');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -98,6 +99,12 @@ const AdminLogin: React.FC = () => {
               />
             </div>
           </div>
+          
+          <div className="flex justify-end mb-4">
+            <Link to="/admin/forgot-password" className="text-primary-600 hover:text-primary-800 text-sm font-medium transition-colors">
+              Forgot password?
+            </Link>
+          </div>
 
           <button
             type="submit"
@@ -112,8 +119,7 @@ const AdminLogin: React.FC = () => {
 
         <div className="mt-8 pt-6 border-t border-gray-200 text-center text-sm text-gray-500">
           <p>
-            Note: In a production environment, you would set up proper user registration and
-            password recovery.
+            Need an account? Contact your administrator for registration.
           </p>
         </div>
       </div>
