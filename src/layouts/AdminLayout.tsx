@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Settings, Video, Music } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../lib/supabase';
 
@@ -102,6 +102,14 @@ const AdminLayout: React.FC = () => {
                   <span>Books</span>
                 </Link>
                 <Link 
+                  to="/admin/authors" 
+                  className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/authors') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Users size={20} />
+                  <span>Authors</span>
+                </Link>
+                <Link 
                   to="/admin/materials" 
                   className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/materials') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
                   onClick={() => setSidebarOpen(false)}
@@ -135,7 +143,7 @@ const AdminLayout: React.FC = () => {
           <div className="p-4 space-y-4">
             <Link 
               to="/admin" 
-              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin') && !isActive('/admin/books') && !isActive('/admin/materials') && !isActive('/admin/multimedia') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin') && !isActive('/admin/books') && !isActive('/admin/authors') && !isActive('/admin/materials') && !isActive('/admin/multimedia') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>
@@ -146,6 +154,13 @@ const AdminLayout: React.FC = () => {
             >
               <BookOpen size={20} />
               <span>Books</span>
+            </Link>
+            <Link 
+              to="/admin/authors" 
+              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/authors') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+            >
+              <Users size={20} />
+              <span>Authors</span>
             </Link>
             <Link 
               to="/admin/materials" 

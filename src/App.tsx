@@ -13,6 +13,8 @@ import AdminBooks from './pages/admin/AdminBooks';
 import AdminMaterials from './pages/admin/AdminMaterials';
 import AdminMultimedia from './pages/admin/AdminMultimedia';
 import AdminBookForm from './pages/admin/AdminBookForm';
+import AdminAuthors from './pages/admin/AdminAuthors';
+import AdminAuthorProfile from './pages/admin/AdminAuthorProfile';
 import AdminLogin from './pages/admin/AdminLogin';
 import ForgotPassword from './pages/admin/ForgotPassword';
 import ResetPassword from './pages/admin/ResetPassword';
@@ -40,6 +42,8 @@ function App() {
             <Route path="books" element={<AdminBooks />} />
             <Route path="books/new" element={<AdminBookForm />} />
             <Route path="books/edit/:id" element={<AdminBookForm />} />
+            <Route path="authors" element={<AdminAuthors />} />
+            <Route path="authors/profile" element={<AdminAuthorProfile />} />
             <Route path="materials" element={<AdminMaterials />} />
             <Route path="multimedia" element={<AdminMultimedia />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
