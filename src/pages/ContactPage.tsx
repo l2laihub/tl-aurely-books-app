@@ -27,17 +27,21 @@ const ContactPage: React.FC = () => {
     // Create a FormData object to submit the form
     const formData = new FormData(form);
     
-    // Add a hidden field for the destination email
-    formData.append('form-name', 'contact');
+    // Show loading state or disable submit button here if desired
     
-    // Submit the form data to Netlify
-    fetch('/', {
+    // Submit the form data to our Netlify function
+    fetch('/.netlify/functions/contact-form', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams(Object.fromEntries(formData) as Record<string, string>).toString()
     })
-      .then(() => {
-        console.log('Form successfully submitted');
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Form successfully submitted', data);
         setIsSubmitted(true);
         // Reset form
         setFormState({
@@ -99,21 +103,8 @@ const ContactPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <form 
-                name="contact" 
-                method="POST" 
-                data-netlify="true" 
-                netlify-honeypot="bot-field"
-                onSubmit={handleSubmit}
-              >
-                {/* Hidden fields for Netlify Forms */}
-                <input type="hidden" name="form-name" value="contact" />
-                <input type="hidden" name="destination" value="tlaurely1149@gmail.com" />
-                <div hidden>
-                  <label>
-                    Don't fill this out if you're human: <input name="bot-field" />
-                  </label>
-                </div>
+              <form onSubmit={handleSubmit}>
+                {/* No need for Netlify Forms attributes as we're using our own function */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-primary-700 mb-1">

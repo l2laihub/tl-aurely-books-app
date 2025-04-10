@@ -1,8 +1,14 @@
 [build]
   publish = "dist"
   command = "npm run build"
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Note: The actual API key should be set in the Netlify dashboard
+# This is just a placeholder to indicate that the variable is needed
+[template.environment]
+  RESEND_API_KEY = "your_resend_api_key"
