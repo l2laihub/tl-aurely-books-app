@@ -21,16 +21,22 @@ exports.handler = async function(event, context) {
     const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Send the email
+    // Now using the verified domain tlaurelybooks.com
     const data = await resend.emails.send({
-      from: 'onboarding@resend.dev', // Use your verified domain or Resend's default
-      to: 'tlaurely1149@gmail.com',
+      from: 'contact@tlaurelybooks.com', // Using verified domain
+      to: 'tlaurely1149@gmail.com', // Direct to final destination
+      reply_to: email, // Set reply-to as the form submitter's email
       subject: `Contact Form: ${subject}`,
       html: `
-        <h2>New Contact Form Submission</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong> ${message}</p>
+        <div style="background-color: #f9f9f9; padding: 20px; font-family: Arial, sans-serif;">
+          <h2 style="color: #333;">New Contact Form Submission</h2>
+          <div style="background-color: white; padding: 15px; border-radius: 5px; border-left: 4px solid #4a90e2;">
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Subject:</strong> ${subject}</p>
+            <p><strong>Message:</strong> ${message}</p>
+          </div>
+        </div>
       `
     });
 

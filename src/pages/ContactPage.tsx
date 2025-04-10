@@ -185,41 +185,54 @@ const ContactPage: React.FC = () => {
           
           {/* Contact Information */}
           <div>
-            <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl shadow-lg p-8 mb-8">
-              <h2 className="text-2xl font-bold mb-6 font-display">Get in Touch</h2>
-              <div className="space-y-6">
-                <div className="flex items-start">
-                  <div className="bg-white/20 p-3 rounded-full mr-4">
-                    <Mail className="text-white" size={24} />
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-3xl shadow-lg p-8 mb-8 relative overflow-hidden">
+              {/* Background pattern */}
+              <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
+                <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="#FFFFFF" d="M42.7,-62.9C56.7,-55.1,70.3,-43.7,77.4,-28.8C84.4,-13.9,84.9,4.6,79.1,20.9C73.3,37.3,61.1,51.6,46.6,60.5C32,69.5,16,73.2,-0.2,73.5C-16.5,73.7,-33,70.5,-47.1,61.9C-61.3,53.3,-73.1,39.2,-79.8,22.7C-86.5,6.2,-88.1,-12.8,-82.1,-29.2C-76.1,-45.6,-62.5,-59.5,-47,-67.1C-31.5,-74.7,-15.7,-76,-0.4,-75.5C15,-74.9,28.8,-70.7,42.7,-62.9Z" transform="translate(100 100)" />
+                </svg>
+              </div>
+              
+              <h2 className="text-2xl md:text-3xl font-bold mb-8 font-display relative">Get in Touch</h2>
+              <div className="space-y-8">
+                <a href="mailto:tlaurely1149@gmail.com" className="group block">
+                  <div className="flex items-start transform transition-transform duration-300 hover:translate-x-2">
+                    <div className="bg-white/20 p-3 rounded-full mr-4 shadow-lg group-hover:bg-white/30 transition-all duration-300">
+                      <Mail className="text-white" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-accent-200 transition-colors duration-300">Email Us</h3>
+                      <p className="text-white/90 font-medium">tlaurely1149@gmail.com</p>
+                      <p className="text-white/80 text-sm mt-1">For general inquiries and support</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">Email Us</h3>
-                    <p className="mt-1">tlaurely1149@gmail.com</p>
-                    <p className="mt-1">tlaurely1149@gmail.com (for download issues)</p>
-                  </div>
-                </div>
+                </a>
                 
-                <div className="flex items-start">
-                  <div className="bg-white/20 p-3 rounded-full mr-4">
-                    <BookOpen className="text-white" size={24} />
+                <a href="mailto:tlaurely1149@gmail.com?subject=School%20Visit%20Inquiry" className="group block">
+                  <div className="flex items-start transform transition-transform duration-300 hover:translate-x-2">
+                    <div className="bg-white/20 p-3 rounded-full mr-4 shadow-lg group-hover:bg-white/30 transition-all duration-300">
+                      <BookOpen className="text-white" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-accent-200 transition-colors duration-300">School Visits</h3>
+                      <p className="text-white/90 font-medium">tlaurely1149@gmail.com</p>
+                      <p className="text-white/80 text-sm mt-1">Available for in-person and virtual visits</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">School Visits</h3>
-                    <p className="mt-1">tlaurely1149@gmail.com</p>
-                    <p className="text-sm mt-1">Available for in-person and virtual visits</p>
-                  </div>
-                </div>
+                </a>
                 
-                <div className="flex items-start">
-                  <div className="bg-white/20 p-3 rounded-full mr-4">
-                    <Users className="text-white" size={24} />
+                <a href="mailto:tlaurely1149@gmail.com?subject=Media%20or%20Publishing%20Inquiry" className="group block">
+                  <div className="flex items-start transform transition-transform duration-300 hover:translate-x-2">
+                    <div className="bg-white/20 p-3 rounded-full mr-4 shadow-lg group-hover:bg-white/30 transition-all duration-300">
+                      <Users className="text-white" size={24} />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1 group-hover:text-accent-200 transition-colors duration-300">For Publishers & Media</h3>
+                      <p className="text-white/90 font-medium">tlaurely1149@gmail.com</p>
+                      <p className="text-white/80 text-sm mt-1">Interview and collaboration requests</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">For Publishers & Media</h3>
-                    <p className="mt-1">tlaurely1149@gmail.com</p>
-                    <p className="text-sm mt-1">Interview and collaboration requests</p>
-                  </div>
-                </div>
+                </a>
               </div>
             </div>
             
