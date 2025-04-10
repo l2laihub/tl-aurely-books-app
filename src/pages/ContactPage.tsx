@@ -20,16 +20,37 @@ const ContactPage: React.FC = () => {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would normally send the form data to your backend
-    console.log('Form submitted:', formState);
-    setIsSubmitted(true);
-    // Reset form
-    setFormState({
-      name: '',
-      email: '',
-      subject: '',
-      message: ''
-    });
+    
+    // Get the form element
+    const form = e.target as HTMLFormElement;
+    
+    // Create a FormData object to submit the form
+    const formData = new FormData(form);
+    
+    // Add a hidden field for the destination email
+    formData.append('form-name', 'contact');
+    
+    // Submit the form data to Netlify
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(Object.fromEntries(formData) as Record<string, string>).toString()
+    })
+      .then(() => {
+        console.log('Form successfully submitted');
+        setIsSubmitted(true);
+        // Reset form
+        setFormState({
+          name: '',
+          email: '',
+          subject: '',
+          message: ''
+        });
+      })
+      .catch((error) => {
+        console.error('Form submission error:', error);
+        alert('There was an error submitting the form. Please try again later.');
+      });
   };
 
   return (
@@ -78,7 +99,21 @@ const ContactPage: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleSubmit}>
+              <form 
+                name="contact" 
+                method="POST" 
+                data-netlify="true" 
+                netlify-honeypot="bot-field"
+                onSubmit={handleSubmit}
+              >
+                {/* Hidden fields for Netlify Forms */}
+                <input type="hidden" name="form-name" value="contact" />
+                <input type="hidden" name="destination" value="tlaurely1149@gmail.com" />
+                <div hidden>
+                  <label>
+                    Don't fill this out if you're human: <input name="bot-field" />
+                  </label>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   <div>
                     <label htmlFor="name" className="block text-sm font-medium text-primary-700 mb-1">
@@ -168,8 +203,8 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">Email Us</h3>
-                    <p className="mt-1">hello@tlaurely.com</p>
-                    <p className="mt-1">support@tlaurely.com (for download issues)</p>
+                    <p className="mt-1">tlaurely1149@gmail.com</p>
+                    <p className="mt-1">tlaurely1149@gmail.com (for download issues)</p>
                   </div>
                 </div>
                 
@@ -179,7 +214,7 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">School Visits</h3>
-                    <p className="mt-1">schoolvisits@tlaurely.com</p>
+                    <p className="mt-1">tlaurely1149@gmail.com</p>
                     <p className="text-sm mt-1">Available for in-person and virtual visits</p>
                   </div>
                 </div>
@@ -190,7 +225,7 @@ const ContactPage: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="font-semibold">For Publishers & Media</h3>
-                    <p className="mt-1">press@tlaurely.com</p>
+                    <p className="mt-1">tlaurely1149@gmail.com</p>
                     <p className="text-sm mt-1">Interview and collaboration requests</p>
                   </div>
                 </div>
@@ -218,7 +253,7 @@ const ContactPage: React.FC = () => {
                 <div>
                   <h3 className="font-semibold text-lg font-display text-primary-700">Can T.L. Aurely visit our school?</h3>
                   <p className="text-primary-600 mt-2">
-                    T.L. Aurely loves visiting schools! Please contact us using the form or email schoolvisits@tlaurely.com for availability and details.
+                    T.L. Aurely loves visiting schools! Please contact us using the form or email tlaurely1149@gmail.com for availability and details.
                   </p>
                 </div>
                 
