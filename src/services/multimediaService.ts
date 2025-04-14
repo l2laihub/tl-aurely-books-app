@@ -8,6 +8,7 @@ export type MultimediaContent = {
   type: 'video' | 'audio';
   url: string;
   thumbnail: string;
+  lyrics?: string;
   created_at?: string;
 };
 

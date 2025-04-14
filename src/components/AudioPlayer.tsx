@@ -6,9 +6,10 @@ interface AudioPlayerProps {
   description: string;
   audioUrl: string;
   imageUrl: string;
+  lyrics?: string;
 }
 
-const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl, imageUrl }) => {
+const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl, imageUrl, lyrics }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -177,6 +178,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
         </div>
       </div>
       <div className="p-6 bg-gradient-to-b from-white to-secondary-50">
+        {/* Description shown once at the top for all audio types */}
+        <p className="text-charcoal-700 mb-4 font-body">{description}</p>
+        
         {isEmbedded ? (
           // Embedded audio player (Spotify, SoundCloud, Suno)
           <div className="mb-4 overflow-hidden" style={{ height: isSuno ? '180px' : '152px' }}>
@@ -203,8 +207,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
             />
             
             <div className="mb-4">
-              <p className="text-charcoal-700 mb-4 font-body">{description}</p>
-              
               <div 
                 ref={progressRef}
                 className="h-2 bg-secondary-100 rounded-full cursor-pointer mb-2"
@@ -259,9 +261,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
           </>
         )}
         
-        {/* Always show description for embedded audio */}
-        {isEmbedded && (
-          <p className="text-charcoal-700 mt-4 font-body">{description}</p>
+        {/* Description is now shown once at the top for all audio types */}
+        
+        {/* Display lyrics if available */}
+        {lyrics && (
+          <div className="mt-6 p-4 bg-secondary-50 rounded-lg border border-secondary-200">
+            <h3 className="text-lg font-semibold mb-2 font-display text-secondary-800">Lyrics</h3>
+            <div className="whitespace-pre-line font-body text-charcoal-700">
+              {lyrics}
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Book } from '../data/books';
 import { Video, Music, Star } from 'lucide-react';
 
@@ -8,8 +7,16 @@ interface BookCardProps {
 }
 
 const BookCard: React.FC<BookCardProps> = ({ book }) => {
+  // Function to prevent event propagation
+  const stopPropagation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <div className="bg-white rounded-3xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-105 border-4 border-primary-200 hover:border-accent-300 hover:shadow-xl relative group">
+    <div
+      className="bg-white rounded-3xl shadow-lg overflow-hidden transition-all duration-300 hover:scale-105 border-4 border-primary-200 hover:border-accent-300 hover:shadow-xl relative group"
+      onClick={stopPropagation}
+    >
       {/* Decorative elements */}
       <div className="absolute -top-6 -right-6 w-12 h-12 bg-cream-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       <div className="absolute -bottom-6 -left-6 w-12 h-12 bg-secondary-200 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -46,19 +53,46 @@ const BookCard: React.FC<BookCardProps> = ({ book }) => {
         </div>
         <p className="text-charcoal-600 mb-4 line-clamp-3 font-body">{book.description}</p>
         <div className="flex flex-wrap gap-2">
-          <Link 
-            to={`/book/${book.id}`}
-            className="inline-block bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
+          {/* Using actual button elements with higher z-index and pointer-events */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Explore Book button clicked for book ID:', book.id);
+              window.location.href = `/book/${book.id}`;
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Explore Book button mouse down for book ID:', book.id);
+              window.location.href = `/book/${book.id}`;
+            }}
+            tabIndex={0}
+            className="inline-block bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 relative z-50 cursor-pointer"
+            style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}
           >
             Explore Book
-          </Link>
-          <Link 
-            to={`/multimedia/${book.id}`}
-            className="inline-flex items-center bg-secondary-600 hover:bg-secondary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Videos & Songs button clicked for book ID:', book.id);
+              window.location.href = `/multimedia/${book.id}`;
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              console.log('Videos & Songs button mouse down for book ID:', book.id);
+              window.location.href = `/multimedia/${book.id}`;
+            }}
+            tabIndex={0}
+            className="inline-flex items-center bg-secondary-600 hover:bg-secondary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 relative z-50 cursor-pointer"
+            style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}
           >
             <Video size={18} className="mr-2" />
             Videos & Songs
-          </Link>
+          </button>
         </div>
       </div>
     </div>

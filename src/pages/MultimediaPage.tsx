@@ -13,6 +13,7 @@ interface MultimediaContent {
   description: string;
   url: string;
   thumbnail: string;
+  lyrics?: string;
 }
 
 interface BookData {
@@ -267,12 +268,13 @@ const MultimediaPage: React.FC = () => {
                 <div key={audio.id} className="bg-white rounded-2xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg transform hover:-translate-y-1 border-2 border-primary-100 hover:border-accent-300">
                   <div className="p-6">
                     <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">{audio.title}</h3>
-                    <p className="text-charcoal-600 mb-4 font-body">{audio.description}</p>
+                    {/* Description is now only shown in the AudioPlayer component */}
                     <AudioPlayer 
                       title={audio.title}
                       description={audio.description}
                       audioUrl={audio.url}
                       imageUrl={getThumbnail(audio)}
+                      lyrics={audio.lyrics}
                     />
                   </div>
                 </div>
@@ -290,7 +292,7 @@ const MultimediaPage: React.FC = () => {
         {/* Back to book details button */}
         <div className="mt-12 text-center">
           <Link 
-            to={`/books/${book.id}`}
+            to={`/book/${book.id}`}
             className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
           >
             <BookOpen size={18} className="mr-2" />

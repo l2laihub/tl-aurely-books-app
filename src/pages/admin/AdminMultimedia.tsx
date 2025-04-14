@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Music, Video, Image, File as FileIcon, Trash, Edit, Play, Plus, Search, Upload, Loader, AlertCircle, Youtube, Headphones, ExternalLink } from 'lucide-react';
+import { Music, Video, FileIcon, Trash, Edit, Plus, Search, Loader, AlertCircle, Youtube, Headphones, ExternalLink, List, Grid } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { supabase } from '../../lib/supabase';
+// import { supabase } from '../../lib/supabase';
 import { uploadFileToStorage } from '../../lib/supabase';
 import { getMultimediaByBookId, createMultimedia, updateMultimedia, deleteMultimedia } from '../../services/multimediaService';
 import { getAllBooks } from '../../services/bookService';
@@ -16,6 +16,7 @@ interface MultimediaContent {
   type: 'video' | 'audio';
   url: string;
   thumbnail: string;
+  lyrics?: string;
 }
 
 const AdminMultimedia: React.FC = () => {
@@ -25,7 +26,8 @@ const AdminMultimedia: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [multimedia, setMultimedia] = useState<MultimediaContent[]>([]);
-  const [allBooks, setAllBooks] = useState<any[]>([]);
+  const [allBooks, setAllBooks] = useState<{id: string; title: string}[]>([]);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   
@@ -37,7 +39,8 @@ const AdminMultimedia: React.FC = () => {
     url: '',
     contentFile: null as File | null,
     thumbnail: '',
-    thumbnailFile: null as File | null
+    thumbnailFile: null as File | null,
+    lyrics: ''
   });
   
   // Edit modal state
@@ -173,7 +176,8 @@ const AdminMultimedia: React.FC = () => {
         description: newContent.description,
         type: newContent.type,
         url: contentUrl,
-        thumbnail: thumbnailUrl
+        thumbnail: thumbnailUrl,
+        ...(newContent.type === 'audio' && newContent.lyrics ? { lyrics: newContent.lyrics } : {})
       });
       
       // Update UI
@@ -186,7 +190,8 @@ const AdminMultimedia: React.FC = () => {
         description: newContent.description,
         type: newContent.type,
         url: contentUrl,
-        thumbnail: thumbnailUrl
+        thumbnail: thumbnailUrl,
+        ...(newContent.type === 'audio' && newContent.lyrics ? { lyrics: newContent.lyrics } : {})
       };
       
       setMultimedia([newItem, ...multimedia]);
@@ -199,7 +204,8 @@ const AdminMultimedia: React.FC = () => {
         url: '',
         contentFile: null,
         thumbnail: '',
-        thumbnailFile: null
+        thumbnailFile: null,
+        lyrics: ''
       });
       setSelectedBook('');
       setUploadModalOpen(false);
@@ -274,7 +280,8 @@ const AdminMultimedia: React.FC = () => {
         description: editingContent.description,
         type: editingContent.type,
         url: contentUrl,
-        thumbnail: thumbnailUrl
+        thumbnail: thumbnailUrl,
+        ...(editingContent.type === 'audio' && editingContent.lyrics !== undefined ? { lyrics: editingContent.lyrics } : {})
       });
       
       // Update UI with the new URLs
@@ -353,19 +360,41 @@ const AdminMultimedia: React.FC = () => {
         </button>
       </div>
       
-      {/* Search - moved up for better UX */}
+      {/* Search and view controls */}
       <div className="bg-white rounded-xl shadow-md p-4 mb-6">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={20} className="text-gray-400" />
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="relative flex-grow">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={20} className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search multimedia by title, book, or description..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
           </div>
-          <input
-            type="text"
-            placeholder="Search multimedia by title, book, or description..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-          />
+          
+          {/* View toggle */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 self-end">
+            <button
+              onClick={() => setViewMode('table')}
+              className={`flex items-center p-2 rounded-md ${viewMode === 'table' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-600'}`}
+              aria-label="Table view"
+              title="Table view"
+            >
+              <List size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('card')}
+              className={`flex items-center p-2 rounded-md ${viewMode === 'card' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-600'}`}
+              aria-label="Card view"
+              title="Card view"
+            >
+              <Grid size={18} />
+            </button>
+          </div>
         </div>
       </div>
       
@@ -392,7 +421,7 @@ const AdminMultimedia: React.FC = () => {
           <Loader size={40} className="animate-spin mx-auto text-primary-600 mb-4" />
           <p className="text-primary-600">Loading multimedia content...</p>
         </div>
-      ) : (
+      ) : viewMode === 'table' ? (
         /* Table - main content */
         <div className="bg-white rounded-xl shadow-md overflow-hidden">
           <div className="overflow-x-auto">
@@ -458,18 +487,21 @@ const AdminMultimedia: React.FC = () => {
                           className="text-gray-500 hover:text-primary-600"
                           target="_blank"
                           rel="noreferrer"
+                          title="Open content URL"
                         >
                           <ExternalLink size={18} />
                         </a>
                         <button 
                           onClick={() => handleEditMultimedia(item)}
                           className="text-blue-500 hover:text-blue-700"
+                          title="Edit content"
                         >
                           <Edit size={18} />
                         </button>
                         <button 
                           onClick={() => handleDeleteMultimedia(item.id)}
                           className="text-red-500 hover:text-red-700"
+                          title="Delete content"
                         >
                           <Trash size={18} />
                         </button>
@@ -487,33 +519,118 @@ const AdminMultimedia: React.FC = () => {
             </div>
           )}
         </div>
+      ) : (
+        /* Card view - better for seeing all fields */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredMultimedia.length > 0 ? (
+            filteredMultimedia.map((item) => (
+              <div key={item.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                <div className="relative">
+                  <img 
+                    src={item.thumbnail} 
+                    alt={item.title}
+                    className="w-full h-48 object-cover" 
+                  />
+                  <div className="absolute top-3 right-3 flex gap-2">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      item.type === 'video' ? 'bg-blue-100 text-blue-800' :
+                      item.type === 'audio' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {item.type.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold text-primary-800 truncate">{item.title}</h3>
+                    {getUrlPlatformIcon(item.url)}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Book:</span>
+                    <Link 
+                      to={`/multimedia/${item.book_id}`}
+                      className="ml-2 text-sm text-primary-700 hover:text-primary-500 hover:underline"
+                    >
+                      {item.bookTitle}
+                    </Link>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Description:</span>
+                    <p className="text-sm text-gray-700 mt-1">{item.description}</p>
+                  </div>
+                  
+                  {item.type === 'audio' && item.lyrics && (
+                    <div className="mb-3">
+                      <span className="text-xs font-medium text-gray-500 uppercase">Lyrics:</span>
+                      <div className="mt-1 text-sm text-gray-700 max-h-24 overflow-y-auto p-2 bg-gray-50 rounded border border-gray-100">
+                        <p className="whitespace-pre-line">{item.lyrics}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 flex justify-between items-center">
+                    <a 
+                      href={item.url} 
+                      className="text-primary-600 hover:text-primary-500 text-sm font-medium flex items-center"
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Open content URL"
+                    >
+                      <ExternalLink size={16} className="mr-1" />
+                      Open URL
+                    </a>
+                    
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => handleEditMultimedia(item)}
+                        className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-full"
+                        title="Edit content"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteMultimedia(item.id)}
+                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                        title="Delete content"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">No multimedia content found matching your search criteria.</p>
+            </div>
+          )}
+        </div>
       )}
       
       {/* Modals - kept at the bottom since they're only shown when needed */}
       {uploadModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-semibold mb-4 font-display text-primary-800">Add New Multimedia</h2>
-            
-            <form onSubmit={handleUploadMultimedia} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Associated Book <span className="text-red-500">*</span>
-                </label>
-                <select 
-                  value={selectedBook}
-                  onChange={(e) => setSelectedBook(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  required
-                >
-                  <option value="">Select a book</option>
-                  {allBooks.map(book => (
-                    <option key={book.id} value={book.id}>{book.title}</option>
-                  ))}
-                </select>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-5xl w-full p-6 my-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold font-display text-primary-800">Add New Multimedia</h2>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  newContent.type === 'video' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {newContent.type.toUpperCase()}
+                </span>
               </div>
+            </div>
+            
+            <form onSubmit={handleUploadMultimedia} className="grid grid-cols-12 gap-6">
+
               
-              <div>
+              <div className="col-span-12 lg:col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content Title <span className="text-red-500">*</span>
                 </label>
@@ -527,7 +644,7 @@ const AdminMultimedia: React.FC = () => {
                 />
               </div>
               
-              <div>
+              <div className="col-span-12 lg:col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description <span className="text-red-500">*</span>
                 </label>
@@ -541,7 +658,24 @@ const AdminMultimedia: React.FC = () => {
                 ></textarea>
               </div>
               
-              <div>
+              {newContent.type === 'audio' && (
+                <div className="col-span-12 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <Music size={16} className="mr-2 text-purple-500" />
+                    Lyrics
+                  </label>
+                  <textarea 
+                    value={newContent.lyrics}
+                    onChange={(e) => setNewContent({...newContent, lyrics: e.target.value})}
+                    placeholder="Enter lyrics for the audio content (optional)"
+                    rows={5}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                  ></textarea>
+                  <p className="text-xs text-gray-500 mt-1">Add song lyrics here. Line breaks will be preserved when displayed.</p>
+                </div>
+              )}
+              
+              <div className="col-span-6 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content Type <span className="text-red-500">*</span>
                 </label>
@@ -550,6 +684,8 @@ const AdminMultimedia: React.FC = () => {
                   onChange={(e) => setNewContent({...newContent, type: e.target.value as 'video' | 'audio'})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   required
+                  aria-label="Select content type"
+                  title="Select content type"
                 >
                   <option value="video">Video</option>
                   <option value="audio">Audio</option>
@@ -570,7 +706,26 @@ const AdminMultimedia: React.FC = () => {
                 </div>
               </div>
               
-              <div>
+              <div className="col-span-6 lg:col-span-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Associated Book <span className="text-red-500">*</span>
+                </label>
+                <select 
+                  value={selectedBook}
+                  onChange={(e) => setSelectedBook(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  required
+                  aria-label="Select a book"
+                  title="Select a book"
+                >
+                  <option value="">Select a book</option>
+                  {allBooks.map(book => (
+                    <option key={book.id} value={book.id}>{book.title}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content URL 
                 </label>
@@ -620,7 +775,7 @@ const AdminMultimedia: React.FC = () => {
                 </div>
               </div>
               
-              <div>
+              <div className="col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Thumbnail URL 
                 </label>
@@ -657,31 +812,33 @@ const AdminMultimedia: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setUploadModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  disabled={isUploading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className={`px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
-                    isUploading ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader size={18} className="animate-spin mr-2" />
-                      Adding...
-                    </>
-                  ) : (
-                    'Add Multimedia'
-                  )}
-                </button>
+              <div className="col-span-12 border-t border-gray-200 pt-6 mt-6">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setUploadModalOpen(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    disabled={isUploading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUploading}
+                    className={`px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
+                      isUploading ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader size={18} className="animate-spin mr-2" />
+                        Adding...
+                      </>
+                    ) : (
+                      'Add Multimedia'
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -690,12 +847,21 @@ const AdminMultimedia: React.FC = () => {
       
       {/* Edit Multimedia Modal */}
       {editModalOpen && editingContent && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-semibold mb-4 font-display text-primary-800">Edit Multimedia</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-5xl w-full p-6 my-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold font-display text-primary-800">Edit Multimedia</h2>
+              <div className="flex items-center gap-2">
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  editingContent.type === 'video' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                }`}>
+                  {editingContent.type.toUpperCase()}
+                </span>
+              </div>
+            </div>
             
-            <form onSubmit={handleUpdateMultimedia} className="space-y-4">
-              <div>
+            <form onSubmit={handleUpdateMultimedia} className="grid grid-cols-12 gap-6">
+              <div className="col-span-12 lg:col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content Title <span className="text-red-500">*</span>
                 </label>
@@ -709,7 +875,7 @@ const AdminMultimedia: React.FC = () => {
                 />
               </div>
               
-              <div>
+              <div className="col-span-12 lg:col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description <span className="text-red-500">*</span>
                 </label>
@@ -723,7 +889,24 @@ const AdminMultimedia: React.FC = () => {
                 ></textarea>
               </div>
               
-              <div>
+              {editingContent.type === 'audio' && (
+                <div className="col-span-12 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+                    <Music size={16} className="mr-2 text-purple-500" />
+                    Lyrics
+                  </label>
+                  <textarea 
+                    value={editingContent.lyrics || ''}
+                    onChange={(e) => setEditingContent({...editingContent, lyrics: e.target.value})}
+                    placeholder="Enter lyrics for the audio content (optional)"
+                    rows={5}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 font-mono text-sm"
+                  ></textarea>
+                  <p className="text-xs text-gray-500 mt-1">Add song lyrics here. Line breaks will be preserved when displayed.</p>
+                </div>
+              )}
+              
+              <div className="col-span-6 lg:col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content Type <span className="text-red-500">*</span>
                 </label>
@@ -732,13 +915,15 @@ const AdminMultimedia: React.FC = () => {
                   onChange={(e) => setEditingContent({...editingContent, type: e.target.value as 'video' | 'audio'})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   required
+                  aria-label="Select content type"
+                  title="Select content type"
                 >
                   <option value="video">Video</option>
                   <option value="audio">Audio</option>
                 </select>
               </div>
               
-              <div>
+              <div className="col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Content URL 
                 </label>
@@ -784,7 +969,7 @@ const AdminMultimedia: React.FC = () => {
                 </div>
               </div>
               
-              <div>
+              <div className="col-span-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Thumbnail URL 
                 </label>
@@ -824,34 +1009,36 @@ const AdminMultimedia: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditModalOpen(false);
-                    setEditingContent(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                  disabled={isUploading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUploading}
-                  className={`px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
-                    isUploading ? 'opacity-70 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader size={18} className="animate-spin mr-2" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update Multimedia'
-                  )}
-                </button>
+              <div className="col-span-12 border-t border-gray-200 pt-6 mt-6">
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditModalOpen(false);
+                      setEditingContent(null);
+                    }}
+                    className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    disabled={isUploading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUploading}
+                    className={`px-5 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 flex items-center ${
+                      isUploading ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader size={18} className="animate-spin mr-2" />
+                        Updating...
+                      </>
+                    ) : (
+                      'Update Multimedia'
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
