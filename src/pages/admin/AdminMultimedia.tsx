@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Music, Video, FileIcon, Trash, Edit, Plus, Search, Loader, AlertCircle, Youtube, Headphones, ExternalLink, List, Grid } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-// import { supabase } from '../../lib/supabase';
-import { uploadFileToStorage } from '../../lib/supabase';
+import { supabase, uploadFileToStorage } from '../../lib/supabase';
 import { getMultimediaByBookId, createMultimedia, updateMultimedia, deleteMultimedia } from '../../services/multimediaService';
+import { formatFileSize } from '../../services/bookService';
 import { getAllBooks } from '../../services/bookService';
 
 interface MultimediaContent {
@@ -98,7 +98,44 @@ const AdminMultimedia: React.FC = () => {
     }
     
     try {
+      // Get the multimedia item before deleting it
+      const itemToDelete = multimedia.find(item => item.id === id);
+      
+      // Delete from multimedia table
       await deleteMultimedia(id);
+      
+      // If it's an audio file, also check for and delete corresponding materials entry
+      if (itemToDelete && itemToDelete.type === 'audio') {
+        try {
+          console.log('[MULTIMEDIA_DELETE] Checking for corresponding materials entry');
+          
+          // Find materials with the same URL
+          const { data: relatedMaterials, error: queryError } = await supabase
+            .from('materials')
+            .select('id')
+            .eq('fileurl', itemToDelete.url)
+            .eq('book_id', itemToDelete.book_id);
+            
+          if (queryError) {
+            console.error('[MULTIMEDIA_DELETE] Error querying materials table:', queryError);
+          } else if (relatedMaterials && relatedMaterials.length > 0) {
+            // Delete the related materials
+            const { error: deleteError } = await supabase
+              .from('materials')
+              .delete()
+              .eq('id', relatedMaterials[0].id);
+              
+            if (deleteError) {
+              console.error('[MULTIMEDIA_DELETE] Error deleting from materials table:', deleteError);
+            } else {
+              console.log('[MULTIMEDIA_DELETE] Successfully deleted audio from materials table');
+            }
+          }
+        } catch (materialError: unknown) {
+          console.error('[MULTIMEDIA_DELETE] Error handling materials deletion:', materialError);
+          // Don't block the main flow if this fails
+        }
+      }
       
       // Remove from UI
       setMultimedia(multimedia.filter(item => item.id !== id));
@@ -130,6 +167,7 @@ const AdminMultimedia: React.FC = () => {
       
       let contentUrl = newContent.url;
       let thumbnailUrl = newContent.thumbnail;
+      let fileSize = '';
       
       // Handle content file upload if provided
       if (newContent.contentFile) {
@@ -138,6 +176,9 @@ const AdminMultimedia: React.FC = () => {
           // Use 'materials' bucket for content files
           contentUrl = await uploadFileToStorage(newContent.contentFile, 'materials', 'multimedia');
           console.log('[MULTIMEDIA_UPLOAD] Content file uploaded successfully:', contentUrl);
+          
+          // Calculate file size for materials table
+          fileSize = formatFileSize(newContent.contentFile.size);
         } catch (error: unknown) {
           console.error('[MULTIMEDIA_UPLOAD] Error uploading content file:', error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -170,7 +211,7 @@ const AdminMultimedia: React.FC = () => {
       }
       
       // Save the multimedia to the database
-      await createMultimedia({
+      const multimediaId = await createMultimedia({
         book_id: selectedBook,
         title: newContent.title,
         description: newContent.description,
@@ -179,6 +220,34 @@ const AdminMultimedia: React.FC = () => {
         thumbnail: thumbnailUrl,
         ...(newContent.type === 'audio' && newContent.lyrics ? { lyrics: newContent.lyrics } : {})
       });
+      
+      // If this is an audio file, also add it to the materials table automatically
+      if (newContent.type === 'audio' && (newContent.contentFile || newContent.url)) {
+        try {
+          console.log('[MULTIMEDIA_UPLOAD] Adding audio file to materials table');
+          
+          // Insert into materials table
+          const { error } = await supabase
+            .from('materials')
+            .insert({
+              book_id: selectedBook,
+              title: `${newContent.title} (Audio)`,
+              description: newContent.description,
+              type: 'audio',
+              fileurl: contentUrl,
+              filesize: fileSize || 'Unknown'
+            });
+            
+          if (error) {
+            console.error('[MULTIMEDIA_UPLOAD] Error adding to materials table:', error);
+          } else {
+            console.log('[MULTIMEDIA_UPLOAD] Successfully added audio to materials table');
+          }
+        } catch (materialError: unknown) {
+          console.error('[MULTIMEDIA_UPLOAD] Error adding to materials:', materialError);
+          // Don't block the main flow if this fails
+        }
+      }
       
       // Update UI
       const bookTitle = allBooks.find(book => book.id === selectedBook)?.title || 'Unknown Book';
@@ -243,6 +312,7 @@ const AdminMultimedia: React.FC = () => {
       
       let contentUrl = editingContent.url;
       let thumbnailUrl = editingContent.thumbnail;
+      let fileSize = '';
       
       // Handle content file upload if provided
       if (editingContent.contentFile) {
@@ -251,6 +321,9 @@ const AdminMultimedia: React.FC = () => {
           // Use 'materials' bucket for content files
           contentUrl = await uploadFileToStorage(editingContent.contentFile, 'materials', 'multimedia');
           console.log('[MULTIMEDIA_UPDATE] Content file uploaded successfully:', contentUrl);
+          
+          // Calculate file size for materials table
+          fileSize = formatFileSize(editingContent.contentFile.size);
         } catch (error: unknown) {
           console.error('[MULTIMEDIA_UPDATE] Error uploading content file:', error);
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -284,6 +357,62 @@ const AdminMultimedia: React.FC = () => {
         ...(editingContent.type === 'audio' && editingContent.lyrics !== undefined ? { lyrics: editingContent.lyrics } : {})
       });
       
+      // If this is an audio file, update or add it to the materials table
+      if (editingContent.type === 'audio') {
+        try {
+          console.log('[MULTIMEDIA_UPDATE] Updating audio file in materials table');
+          
+          // Check if there's already a corresponding entry in the materials table
+          const { data: existingMaterials, error: queryError } = await supabase
+            .from('materials')
+            .select('id')
+            .eq('fileurl', editingContent.url)
+            .eq('book_id', editingContent.book_id);
+            
+          if (queryError) {
+            console.error('[MULTIMEDIA_UPDATE] Error querying materials table:', queryError);
+          } else if (existingMaterials && existingMaterials.length > 0) {
+            // Update existing material
+            const { error: updateError } = await supabase
+              .from('materials')
+              .update({
+                title: `${editingContent.title} (Audio)`,
+                description: editingContent.description,
+                fileurl: contentUrl,
+                filesize: fileSize || 'Unknown'
+              })
+              .eq('id', existingMaterials[0].id);
+              
+            if (updateError) {
+              console.error('[MULTIMEDIA_UPDATE] Error updating materials table:', updateError);
+            } else {
+              console.log('[MULTIMEDIA_UPDATE] Successfully updated audio in materials table');
+            }
+          } else {
+            // Insert new material
+            const { error: insertError } = await supabase
+              .from('materials')
+              .insert({
+                book_id: editingContent.book_id,
+                title: `${editingContent.title} (Audio)`,
+                description: editingContent.description,
+                type: 'audio',
+                fileurl: contentUrl,
+                filesize: fileSize || 'Unknown'
+              });
+              
+            if (insertError) {
+              console.error('[MULTIMEDIA_UPDATE] Error adding to materials table:', insertError);
+            } else {
+              console.log('[MULTIMEDIA_UPDATE] Successfully added audio to materials table');
+            }
+          }
+        } catch (materialError: unknown) {
+          console.error('[MULTIMEDIA_UPDATE] Error updating materials:', materialError);
+          // Don't block the main flow if this fails
+        }
+      }
+      
       // Update UI with the new URLs
       const updatedContent = {
         ...editingContent,
@@ -291,7 +420,7 @@ const AdminMultimedia: React.FC = () => {
         thumbnail: thumbnailUrl
       };
       
-      setMultimedia(multimedia.map(item => 
+      setMultimedia(multimedia.map(item =>
         item.id === editingContent.id ? updatedContent : item
       ));
       

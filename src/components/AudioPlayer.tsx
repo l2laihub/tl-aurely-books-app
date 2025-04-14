@@ -14,6 +14,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
   const [isMuted, setIsMuted] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [showLyrics, setShowLyrics] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
   
@@ -179,7 +180,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
       </div>
       <div className="p-6 bg-gradient-to-b from-white to-secondary-50">
         {/* Description shown once at the top for all audio types */}
-        <p className="text-charcoal-700 mb-4 font-body">{description}</p>
+        <p className="text-charcoal-700 mb-4 font-body whitespace-pre-line">{description}</p>
         
         {isEmbedded ? (
           // Embedded audio player (Spotify, SoundCloud, Suno)
@@ -263,13 +264,25 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ title, description, audioUrl,
         
         {/* Description is now shown once at the top for all audio types */}
         
-        {/* Display lyrics if available */}
+        {/* Display lyrics if available with collapsible toggle */}
         {lyrics && (
-          <div className="mt-6 p-4 bg-secondary-50 rounded-lg border border-secondary-200">
-            <h3 className="text-lg font-semibold mb-2 font-display text-secondary-800">Lyrics</h3>
-            <div className="whitespace-pre-line font-body text-charcoal-700">
-              {lyrics}
-            </div>
+          <div className="mt-6">
+            <button
+              onClick={() => setShowLyrics(!showLyrics)}
+              className="flex items-center justify-between w-full p-3 bg-secondary-50 rounded-t-lg border border-secondary-200 hover:bg-secondary-100 transition-colors"
+            >
+              <h3 className="text-lg font-semibold font-display text-secondary-800">Lyrics</h3>
+              <span className="text-secondary-600">
+                {showLyrics ? '▲ Hide' : '▼ Show'}
+              </span>
+            </button>
+            {showLyrics && (
+              <div className="p-4 bg-secondary-50 rounded-b-lg border border-secondary-200 border-t-0">
+                <div className="whitespace-pre-line font-body text-charcoal-700 max-h-60 overflow-y-auto">
+                  {lyrics}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
