@@ -267,7 +267,9 @@ export const uploadKitHeroImage = async (file: File, kitId: string): Promise<str
     .from('public')
     .getPublicUrl(filePath);
   
-  return data.publicUrl;
+  // Append a timestamp query parameter for cache busting
+  const cacheBustedUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+  return cacheBustedUrl;
 };
 
 export const uploadKitFile = async (file: File, kitId: string, fileType: string): Promise<string> => {

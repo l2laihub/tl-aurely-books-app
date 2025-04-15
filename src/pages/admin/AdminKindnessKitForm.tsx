@@ -122,6 +122,11 @@ const AdminKindnessKitForm: React.FC = () => {
         // Update existing kit
         await updateKindnessKit(id, kitData);
         
+        // Update image URL state and clear preview/file state
+        setHeroImageUrl(finalHeroImageUrl);
+        setHeroImage(null);
+        setHeroImagePreview(null);
+
         setNotification({
           message: 'Kindness kit updated successfully',
           type: 'success'

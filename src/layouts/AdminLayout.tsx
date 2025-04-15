@@ -151,7 +151,7 @@ const AdminLayout: React.FC = () => {
           <div className="p-4 space-y-4">
             <Link 
               to="/admin" 
-              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin') && !isActive('/admin/books') && !isActive('/admin/authors') && !isActive('/admin/materials') && !isActive('/admin/multimedia') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+              className={`flex items-center space-x-2 p-3 rounded-lg ${location.pathname === '/admin' ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
             >
               <LayoutDashboard size={20} />
               <span>Dashboard</span>

@@ -52,7 +52,7 @@ function App() {
             <Route path="multimedia" element={<AdminMultimedia />} />
             <Route path="kindness-kits" element={<AdminKindnessKits />} />
             <Route path="kindness-kits/new" element={<AdminKindnessKitForm />} />
-            <Route path="kindness-kits/edit/:id" element={<AdminKindnessKitForm />} />
+            <Route path="kindness-kits/:id/edit" element={<AdminKindnessKitForm />} />
             <Route path="kindness-kits/:id/files" element={<AdminKindnessKitFiles />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
