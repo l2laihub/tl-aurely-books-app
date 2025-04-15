@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video, Gift } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../lib/supabase';
 
@@ -125,7 +125,15 @@ const AdminLayout: React.FC = () => {
                   <Video size={20} />
                   <span>Videos & Songs</span>
                 </Link>
-                <Link 
+                <Link
+                  to="/admin/kindness-kits"
+                  className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/kindness-kits') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Gift size={20} />
+                  <span>Kindness Kits</span>
+                </Link>
+                <Link
                   to="/" 
                   className="flex items-center space-x-2 p-3 rounded-lg hover:bg-gray-100 text-primary-600"
                   onClick={() => setSidebarOpen(false)}
@@ -175,6 +183,13 @@ const AdminLayout: React.FC = () => {
             >
               <Video size={20} />
               <span>Videos & Songs</span>
+            </Link>
+            <Link
+              to="/admin/kindness-kits"
+              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/kindness-kits') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+            >
+              <Gift size={20} />
+              <span>Kindness Kits</span>
             </Link>
             <div className="py-2 border-t border-gray-200">
               <Link 

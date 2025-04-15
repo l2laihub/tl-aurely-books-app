@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getBookById } from '../services/bookService';
+import { getKindnessKitByBookId, getKitFiles, KindnessKit, KitFile } from '../services/kindnessKitService';
 import DownloadCard from '../components/DownloadCard';
+import KindnessKitSignup from '../components/KindnessKitSignup';
 import { Calendar, Book, FileText, ArrowLeft, Star, Download, Video, Music, Loader, ShoppingCart } from 'lucide-react';
 
 // Define types for book and material
@@ -34,6 +36,8 @@ interface MaterialType {
 const BookDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [book, setBook] = useState<BookType | null>(null);
+  const [kindnessKit, setKindnessKit] = useState<KindnessKit | null>(null);
+  const [kitFiles, setKitFiles] = useState<KitFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,8 +47,26 @@ const BookDetails: React.FC = () => {
       
       try {
         setIsLoading(true);
+        
+        // Fetch book data
         const bookData = await getBookById(id);
         setBook(bookData);
+        
+        // Fetch kindness kit data for this book
+        try {
+          const kitData = await getKindnessKitByBookId(id);
+          if (kitData) {
+            setKindnessKit(kitData);
+            
+            // Fetch kit files
+            const filesData = await getKitFiles(kitData.id);
+            setKitFiles(filesData);
+          }
+        } catch (kitErr) {
+          console.error('Error fetching kindness kit:', kitErr);
+          // Don't set an error here, as the kindness kit is optional
+        }
+        
         setIsLoading(false);
       } catch (err) {
         console.error('Error fetching book details:', err);
@@ -213,6 +235,11 @@ const BookDetails: React.FC = () => {
             </div>
           </div>
         </div>
+        {/* Kindness Kit Signup Section */}
+        {kindnessKit && kitFiles.length > 0 && (
+          <KindnessKitSignup kit={kindnessKit} files={kitFiles} />
+        )}
+        
         
         {/* Downloads Section */}
         <div className="mb-12">

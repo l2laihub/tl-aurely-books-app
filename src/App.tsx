@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -7,6 +6,7 @@ import BooksPage from './pages/BooksPage';
 import BookDetails from './pages/BookDetails';
 import AboutPage from './pages/AboutPage';
 import ContactPage from './pages/ContactPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import MultimediaPage from './pages/MultimediaPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminBooks from './pages/admin/AdminBooks';
@@ -15,6 +15,9 @@ import AdminMultimedia from './pages/admin/AdminMultimedia';
 import AdminBookForm from './pages/admin/AdminBookForm';
 import AdminAuthors from './pages/admin/AdminAuthors';
 import AdminAuthorProfile from './pages/admin/AdminAuthorProfile';
+import AdminKindnessKits from './pages/admin/AdminKindnessKits';
+import AdminKindnessKitForm from './pages/admin/AdminKindnessKitForm';
+import AdminKindnessKitFiles from './pages/admin/AdminKindnessKitFiles';
 import AdminLogin from './pages/admin/AdminLogin';
 import ForgotPassword from './pages/admin/ForgotPassword';
 import ResetPassword from './pages/admin/ResetPassword';
@@ -32,6 +35,7 @@ function App() {
             <Route path="multimedia/:id" element={<MultimediaPage />} />
             <Route path="about" element={<AboutPage />} />
             <Route path="contact" element={<ContactPage />} />
+            <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -46,6 +50,10 @@ function App() {
             <Route path="authors/profile" element={<AdminAuthorProfile />} />
             <Route path="materials" element={<AdminMaterials />} />
             <Route path="multimedia" element={<AdminMultimedia />} />
+            <Route path="kindness-kits" element={<AdminKindnessKits />} />
+            <Route path="kindness-kits/new" element={<AdminKindnessKitForm />} />
+            <Route path="kindness-kits/edit/:id" element={<AdminKindnessKitForm />} />
+            <Route path="kindness-kits/:id/files" element={<AdminKindnessKitFiles />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>

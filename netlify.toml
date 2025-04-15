@@ -8,7 +8,10 @@
   to = "/index.html"
   status = 200
 
-# Note: The actual API key should be set in the Netlify dashboard
-# This is just a placeholder to indicate that the variable is needed
+# Note: The actual API keys should be set in the Netlify dashboard
+# This is just a placeholder to indicate that the variables are needed
 [template.environment]
   RESEND_API_KEY = "your_resend_api_key"
+  SUPABASE_URL = "your_supabase_url"
+  SUPABASE_SERVICE_ROLE_KEY = "your_supabase_service_role_key"
+  MAILERLITE_API_KEY = "your_mailerlite_api_key"
