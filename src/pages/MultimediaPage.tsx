@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getBookById } from '../services/bookService';
 import { getMultimediaByBookId, initializeMultimediaData, getValidVimeoId } from '../services/multimediaService';
 import VideoPlayer from '../components/VideoPlayer';
@@ -26,6 +26,7 @@ interface BookData {
 
 const MultimediaPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [book, setBook] = useState<BookData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -290,14 +291,15 @@ const MultimediaPage: React.FC = () => {
         </div>
         
         {/* Back to book details button */}
-        <div className="mt-12 text-center">
-          <Link 
-            to={`/book/${book.id}`}
+        {/* Added relative positioning and z-index */}
+        <div className="mt-12 text-center relative z-10">
+          <button
+            onClick={() => navigate(`/book/${id}`)}
             className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
           >
             <BookOpen size={18} className="mr-2" />
             Back to Book Details
-          </Link>
+          </button>
         </div>
       </div>
       
