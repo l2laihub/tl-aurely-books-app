@@ -30,10 +30,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ title, description, videoUrl,
       videoId = urlParams.get('v') || '';
     } else if (url.includes('youtu.be/')) {
       videoId = url.split('youtu.be/')[1].split('?')[0];
+    } else if (url.includes('youtube.com/shorts/')) {
+      videoId = url.split('/shorts/')[1].split('?')[0];
     }
     
     // Add autoplay=0 to prevent autoplay by default
-    return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+    // Add origin parameter for better compatibility, especially on localhost
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `https://www.youtube.com/embed/${videoId}?autoplay=0&origin=${encodeURIComponent(origin)}`;
   };
   
   // Format Vimeo URL for embedding

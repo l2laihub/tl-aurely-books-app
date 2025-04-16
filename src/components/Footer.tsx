@@ -1,5 +1,5 @@
 import React, { useState, FormEvent } from 'react';
-import { Mail, Instagram, Twitter, Facebook, Star } from 'lucide-react';
+import { Mail, Youtube, Facebook,  Star } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -85,16 +85,16 @@ const Footer: React.FC = () => {
               delightful stories and interactive learning materials.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
-                <Twitter size={20} />
+              <a href="https://www.tiktok.com/@tl_aurely_books" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
+                <img src="/images/tiktok-outline.svg" alt="TikTok" width="20" height="20" />
               </a>
-              <a href="#" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
+              <a href="https://www.facebook.com/profile.php?id=61575563870207" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
                 <Facebook size={20} />
               </a>
-              <a href="#" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
-                <Instagram size={20} />
+              <a href="https://www.youtube.com/@TLAurelyBooks" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
+                <Youtube size={20} />
               </a>
-              <a href="#" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
+              <a href="mailto:tlaurely1149gmail.com" className="hover:text-cream-300 transition-colors bg-primary-700 p-2 rounded-full">
                 <Mail size={20} />
               </a>
             </div>

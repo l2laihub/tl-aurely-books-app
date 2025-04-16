@@ -245,7 +245,7 @@ const MultimediaPage: React.FC = () => {
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-semibold mb-2 font-display text-primary-800">{video.title}</h3>
-                    <p className="text-charcoal-600 mb-4 font-body">{video.description}</p>
+                    {/* Description is now only shown in the VideoPlayer component */}
                     <VideoPlayer 
                       title={video.title}
                       description={video.description}

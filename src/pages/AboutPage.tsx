@@ -110,11 +110,11 @@ const AboutPage: React.FC = () => {
                 </div>
                 
                 <div className="flex flex-wrap gap-4 pt-4">
-                  <a href="#" className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-2 px-4 rounded-full transition-colors">
+                  <a href="/contact" className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-2 px-4 rounded-full transition-colors">
                     <Mail size={18} className="mr-2" />
                     Contact T.L.
                   </a>
-                  <a href="#" className="inline-flex items-center bg-white hover:bg-gray-100 text-primary-700 border-2 border-primary-600 font-medium py-2 px-4 rounded-full transition-colors">
+                  <a href="/contact" className="inline-flex items-center bg-white hover:bg-gray-100 text-primary-700 border-2 border-primary-600 font-medium py-2 px-4 rounded-full transition-colors">
                     <MessageSquare size={18} className="mr-2" />
                     School Visits
                   </a>
