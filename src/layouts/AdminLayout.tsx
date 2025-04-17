@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video, Gift } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video, Gift, Calendar } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../lib/supabase';
 
@@ -126,6 +126,14 @@ const AdminLayout: React.FC = () => {
                   <span>Videos & Songs</span>
                 </Link>
                 <Link
+                  to="/admin/upcoming-books"
+                  className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/upcoming-books') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Calendar size={20} />
+                  <span>Upcoming Books</span>
+                </Link>
+                <Link
                   to="/admin/kindness-kits"
                   className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/kindness-kits') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
                   onClick={() => setSidebarOpen(false)}
@@ -183,6 +191,13 @@ const AdminLayout: React.FC = () => {
             >
               <Video size={20} />
               <span>Videos & Songs</span>
+            </Link>
+            <Link
+              to="/admin/upcoming-books"
+              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/upcoming-books') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+            >
+              <Calendar size={20} />
+              <span>Upcoming Books</span>
             </Link>
             <Link
               to="/admin/kindness-kits"

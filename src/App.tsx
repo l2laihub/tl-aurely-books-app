@@ -18,6 +18,8 @@ import AdminAuthorProfile from './pages/admin/AdminAuthorProfile';
 import AdminKindnessKits from './pages/admin/AdminKindnessKits';
 import AdminKindnessKitForm from './pages/admin/AdminKindnessKitForm';
 import AdminKindnessKitFiles from './pages/admin/AdminKindnessKitFiles';
+import AdminUpcomingBooks from './pages/admin/AdminUpcomingBooks';
+import AdminUpcomingBookForm from './pages/admin/AdminUpcomingBookForm';
 import AdminLogin from './pages/admin/AdminLogin';
 import ForgotPassword from './pages/admin/ForgotPassword';
 import ResetPassword from './pages/admin/ResetPassword';
@@ -54,6 +56,9 @@ function App() {
             <Route path="kindness-kits/new" element={<AdminKindnessKitForm />} />
             <Route path="kindness-kits/:id/edit" element={<AdminKindnessKitForm />} />
             <Route path="kindness-kits/:id/files" element={<AdminKindnessKitFiles />} />
+            <Route path="upcoming-books" element={<AdminUpcomingBooks />} />
+            <Route path="upcoming-books/new" element={<AdminUpcomingBookForm />} />
+            <Route path="upcoming-books/edit/:id" element={<AdminUpcomingBookForm />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>

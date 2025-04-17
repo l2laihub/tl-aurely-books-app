@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
 import FeaturedBook from '../components/FeaturedBook';
 import BookCard from '../components/BookCard';
+import UpcomingBooksSection from '../components/UpcomingBooksSection';
 import { BookOpen, Download, Palette, Brain, GraduationCap, Loader, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getAllBooks } from '../services/bookService';
@@ -127,6 +128,9 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+      
+      {/* Upcoming Books */}
+      <UpcomingBooksSection />
       
       {/* Features */}
       <section className="container mx-auto px-4 py-16">
