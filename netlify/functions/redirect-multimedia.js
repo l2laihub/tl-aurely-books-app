@@ -32,9 +32,9 @@ exports.handler = async (event, context) => {
     const { data: book, error } = await supabase
       .from('books') // Assuming multimedia is linked to the main 'books' table
       .select('id, slug')
-      .eq('id', id)
+      .eq('slug', id) // Query by slug instead of ID
       .single();
-    console.log(`[redirect-multimedia] Supabase query result for ID ${id}:`, { data: book, error });
+    console.log(`[redirect-multimedia] Supabase query result for SLUG ${id}:`, { data: book, error }); // Log based on slug
 
     if (error || !book || !book.slug) {
       console.error(`Error fetching book or slug missing for multimedia redirect ID ${id}:`, error);
