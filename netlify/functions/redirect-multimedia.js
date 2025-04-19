@@ -18,6 +18,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 exports.handler = async (event, context) => {
   const { id } = event.queryStringParameters;
 
+  console.log(`[redirect-multimedia] Received ID: ${id}`);
+  console.log(`[redirect-multimedia] Using Supabase URL: ${SUPABASE_URL}`);
   if (!id) {
     return {
       statusCode: 400,
@@ -32,6 +34,7 @@ exports.handler = async (event, context) => {
       .select('id, slug')
       .eq('id', id)
       .single();
+    console.log(`[redirect-multimedia] Supabase query result for ID ${id}:`, { data: book, error });
 
     if (error || !book || !book.slug) {
       console.error(`Error fetching book or slug missing for multimedia redirect ID ${id}:`, error);
