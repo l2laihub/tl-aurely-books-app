@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import AdminLayout from './layouts/AdminLayout';
+import ScrollToTop from './components/ScrollToTop';
 import HomePage from './pages/HomePage';
 import BooksPage from './pages/BooksPage';
 import BookDetails from './pages/BookDetails';
@@ -23,12 +24,14 @@ import AdminUpcomingBookForm from './pages/admin/AdminUpcomingBookForm';
 import AdminLogin from './pages/admin/AdminLogin';
 import ForgotPassword from './pages/admin/ForgotPassword';
 import ResetPassword from './pages/admin/ResetPassword';
+import AdminTestimonials from './pages/admin/AdminTestimonials';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<MainLayout />}>
             <Route index element={<HomePage />} />
@@ -59,6 +62,7 @@ function App() {
             <Route path="upcoming-books" element={<AdminUpcomingBooks />} />
             <Route path="upcoming-books/new" element={<AdminUpcomingBookForm />} />
             <Route path="upcoming-books/edit/:id" element={<AdminUpcomingBookForm />} />
+            <Route path="testimonials" element={<AdminTestimonials />} />
             <Route path="*" element={<Navigate to="/admin" replace />} />
           </Route>
         </Routes>

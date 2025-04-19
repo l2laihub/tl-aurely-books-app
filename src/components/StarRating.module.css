@@ -1,0 +1,41 @@
+.starContainer {
+  display: flex;
+  align-items: center;
+}
+
+.interactive {
+  cursor: pointer;
+}
+
+.starWrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.emptyStar {
+  color: #D1D5DB; /* text-gray-300 */
+}
+
+.filledStar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+.starYellow {
+  color: #FBBF24; /* text-yellow-400 */
+}
+
+/* We'll use these classes for different fill percentages */
+.fill0 { width: 0%; }
+.fill10 { width: 10%; }
+.fill20 { width: 20%; }
+.fill30 { width: 30%; }
+.fill40 { width: 40%; }
+.fill50 { width: 50%; }
+.fill60 { width: 60%; }
+.fill70 { width: 70%; }
+.fill80 { width: 80%; }
+.fill90 { width: 90%; }
+.fill100 { width: 100%; }

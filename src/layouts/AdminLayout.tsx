@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video, Gift, Calendar } from 'lucide-react';
+import { BookOpen, LayoutDashboard, FileText, LogOut, Menu, X, ChevronRight, Users, Video, Gift, Calendar, MessageSquareQuote } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { signOut } from '../lib/supabase';
 
@@ -142,6 +142,14 @@ const AdminLayout: React.FC = () => {
                   <span>Kindness Kits</span>
                 </Link>
                 <Link
+                  to="/admin/testimonials"
+                  className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/testimonials') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <MessageSquareQuote size={20} />
+                  <span>Testimonials</span>
+                </Link>
+                <Link
                   to="/" 
                   className="flex items-center space-x-2 p-3 rounded-lg hover:bg-gray-100 text-primary-600"
                   onClick={() => setSidebarOpen(false)}
@@ -205,6 +213,13 @@ const AdminLayout: React.FC = () => {
             >
               <Gift size={20} />
               <span>Kindness Kits</span>
+            </Link>
+            <Link
+              to="/admin/testimonials"
+              className={`flex items-center space-x-2 p-3 rounded-lg ${isActive('/admin/testimonials') ? 'bg-primary-100 text-primary-800' : 'hover:bg-gray-100'}`}
+            >
+              <MessageSquareQuote size={20} />
+              <span>Testimonials</span>
             </Link>
             <div className="py-2 border-t border-gray-200">
               <Link 

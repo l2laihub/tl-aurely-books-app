@@ -5,6 +5,7 @@ import { getKindnessKitByBookId, getKitFiles, KindnessKit, KitFile } from '../se
 import DownloadCard from '../components/DownloadCard';
 import KindnessKitSignup from '../components/KindnessKitSignup';
 import { Calendar, Book, FileText, ArrowLeft, Star, Download, Video, Music, Loader, ShoppingCart } from 'lucide-react';
+import BookTestimonials from '../components/BookTestimonials';
 
 // Define types for book and material
 interface BookType {
@@ -301,6 +302,14 @@ const BookDetails: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Testimonials Section */}
+        {book && (
+          <BookTestimonials 
+            bookId={book.id} 
+            amazonLink={book.amazonLink} 
+          />
+        )}
         
         {/* Reading Tips */}
         <div className="bg-gradient-to-r from-primary-600 to-secondary-500 text-white rounded-3xl p-8 mb-12 shadow-lg">
