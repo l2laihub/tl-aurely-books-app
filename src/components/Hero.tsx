@@ -37,7 +37,7 @@ const Hero: React.FC = () => {
           <p className="text-xl md:text-2xl mb-8 text-white/90 font-body">
             Join T.L. Aurely's colorful world of educational children's books filled with fun characters, exciting adventures, and valuable lessons.
           </p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 relative z-10"> {/* Added relative z-10 */}
             <Link
               to="/books"
               className="bg-accent-500 hover:bg-accent-400 text-white font-bold px-8 py-4 rounded-full transition-all duration-300 text-lg transform hover:-translate-y-1 hover:shadow-lg"

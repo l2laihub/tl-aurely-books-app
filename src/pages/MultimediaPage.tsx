@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getBookById } from '../services/bookService';
+import { getBookBySlugAndShortId } from '../services/bookService'; // Use the correct function
 import { getMultimediaByBookId, initializeMultimediaData, getValidVimeoId } from '../services/multimediaService';
 import VideoPlayer from '../components/VideoPlayer';
 import AudioPlayer from '../components/AudioPlayer';
@@ -25,7 +25,7 @@ interface BookData {
 }
 
 const MultimediaPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slugWithId } = useParams<{ slugWithId: string }>(); // Get slugWithId
   const navigate = useNavigate();
   const [book, setBook] = useState<BookData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,22 +34,47 @@ const MultimediaPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'video' | 'audio'>('audio');
   
   useEffect(() => {
-    const loadBookAndMultimedia = async (bookId: string) => {
+    const loadBookAndMultimedia = async (currentSlugWithId: string) => {
+      // Parse slug and shortId
+      const parts = currentSlugWithId.split('-');
+      if (parts.length < 2) {
+        setError('Invalid multimedia URL format.');
+        setIsLoading(false);
+        return;
+      }
+      const shortId = parts.pop() || '';
+      const slug = parts.join('-');
+
+      if (shortId.length !== 8) {
+         setError('Invalid book identifier in URL.');
+         setIsLoading(false);
+         return;
+      }
+
       try {
         setIsLoading(true);
         setError(null);
-        
-        // Load book data
-        const bookData = await getBookById(bookId);
-        setBook(bookData);
-        
+
+        // Load book data using slug and shortId
+        const bookData = await getBookBySlugAndShortId(slug, shortId);
+        setBook(bookData); // bookData now contains the full ID and slug
+
+        // --- Optional: Canonical URL check (similar to BookDetails) ---
+        const expectedSlugWithId = `${bookData.slug}-${bookData.id.substring(0, 8)}`;
+        if (currentSlugWithId !== expectedSlugWithId) {
+            navigate(`/multimedia/${expectedSlugWithId}`, { replace: true });
+            return; // Stop processing as we are redirecting
+        }
+        // --- End canonical check ---
+
         // Initialize multimedia table if needed (for demo purposes)
+        // Consider if this is still needed or should be handled differently
         await initializeMultimediaData();
-        
-        // Load multimedia data from the database
-        const multimediaData = await getMultimediaByBookId(bookId);
-        
-        // Fix any problematic Vimeo URLs for demo purposes
+
+        // Load multimedia data from the database using the full book ID
+        const multimediaData = await getMultimediaByBookId(bookData.id);
+
+        // Fix any problematic Vimeo URLs for demo purposes (logic remains the same)
         const fixedMultimediaData = multimediaData.map(item => {
           if (item.type === 'video' && item.url.includes('vimeo.com')) {
             // Fix Vimeo URL if it has an invalid ID
@@ -69,20 +94,25 @@ const MultimediaPage: React.FC = () => {
         } else {
           console.log("No multimedia found in database, using sample data");
           // For demo/testing, we'll provide some examples if none exist in the database
-          setMultimedia(getSampleMultimedia(bookId));
+          // Use the full ID obtained from bookData
+          setMultimedia(getSampleMultimedia(bookData.id));
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading multimedia page:', err);
-        setError('Failed to load multimedia content. Please try again.');
+        if (err.message?.includes('Book not found')) { // Check for our specific error
+             setError('Failed to load book information for multimedia.');
+        } else {
+             setError('Failed to load multimedia content. Please try again.');
+        }
       } finally {
         setIsLoading(false);
       }
     };
-    
-    if (id) {
-      loadBookAndMultimedia(id);
+
+    if (slugWithId) {
+      loadBookAndMultimedia(slugWithId);
     }
-  }, [id]);
+  }, [slugWithId, navigate]); // Update dependencies
   
   // Sample multimedia content for demonstration
   const getSampleMultimedia = (bookId: string): MultimediaContent[] => {
@@ -294,7 +324,7 @@ const MultimediaPage: React.FC = () => {
         {/* Added relative positioning and z-index */}
         <div className="mt-12 text-center relative z-10">
           <button
-            onClick={() => navigate(`/book/${id}`)}
+            onClick={() => navigate(`/books/${slugWithId}`)} // Navigate back using the slugWithId
             className="inline-flex items-center bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1"
           >
             <BookOpen size={18} className="mr-2" />

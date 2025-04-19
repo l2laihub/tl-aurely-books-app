@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { UpcomingBook } from '../types/UpcomingBook';
+import { generateSlug } from '../lib/utils'; // Import generateSlug
 
 export type UpcomingBookFormData = {
   id?: string;
@@ -9,6 +10,7 @@ export type UpcomingBookFormData = {
   coverImageUrl: string;  // This will store base64 data or URL for images
   expectedReleaseDate: string;
   preorderUrl?: string;
+  slug?: string; // Add slug here, though it's generated
 };
 
 // Get all upcoming books
@@ -27,7 +29,8 @@ export async function getAllUpcomingBooks(): Promise<UpcomingBook[]> {
     ...book,
     coverImageUrl: book.cover_image_url,
     expectedReleaseDate: book.expected_release_date,
-    preorderUrl: book.preorder_url
+    preorderUrl: book.preorder_url,
+    slug: book.slug // Map slug
   }));
 
   return mappedUpcomingBooks;
@@ -50,7 +53,8 @@ export async function getUpcomingBookById(id: string): Promise<UpcomingBook> {
     ...upcomingBook,
     coverImageUrl: upcomingBook.cover_image_url,
     expectedReleaseDate: upcomingBook.expected_release_date,
-    preorderUrl: upcomingBook.preorder_url
+    preorderUrl: upcomingBook.preorder_url,
+    slug: upcomingBook.slug // Map slug
   };
 
   return mappedUpcomingBook;
@@ -58,6 +62,9 @@ export async function getUpcomingBookById(id: string): Promise<UpcomingBook> {
 
 // Create a new upcoming book
 export async function createUpcomingBook(bookData: UpcomingBookFormData): Promise<string> {
+  // Generate slug from title
+  const slug = generateSlug(bookData.title);
+
   // Map camelCase to snake_case for database fields
   const { data: book, error } = await supabase
     .from('upcoming_books')
@@ -67,7 +74,8 @@ export async function createUpcomingBook(bookData: UpcomingBookFormData): Promis
       description: bookData.description,
       cover_image_url: bookData.coverImageUrl,
       expected_release_date: bookData.expectedReleaseDate,
-      preorder_url: bookData.preorderUrl
+      preorder_url: bookData.preorderUrl,
+      slug: slug // Add generated slug
     })
     .select('id')
     .single();
@@ -81,6 +89,9 @@ export async function createUpcomingBook(bookData: UpcomingBookFormData): Promis
 
 // Update an existing upcoming book
 export async function updateUpcomingBook(id: string, bookData: UpcomingBookFormData): Promise<string> {
+  // Generate slug from title
+  const slug = generateSlug(bookData.title);
+
   // Map camelCase to snake_case for database fields
   const { error } = await supabase
     .from('upcoming_books')
@@ -91,6 +102,7 @@ export async function updateUpcomingBook(id: string, bookData: UpcomingBookFormD
       cover_image_url: bookData.coverImageUrl,
       expected_release_date: bookData.expectedReleaseDate,
       preorder_url: bookData.preorderUrl,
+      slug: slug, // Add generated slug
       updated_at: new Date().toISOString()
     })
     .eq('id', id);

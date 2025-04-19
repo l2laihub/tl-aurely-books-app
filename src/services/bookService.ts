@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { uploadFileToStorage } from '../lib/supabase';
+import { generateSlug } from '../lib/utils'; // Import generateSlug
 
 export type BookFormData = {
   id?: string;
@@ -14,6 +15,7 @@ export type BookFormData = {
   genres: string[];
   amazonLink?: string;  // New field for Amazon link
   reviewLink?: string;  // New field for review link
+  slug?: string; // Add slug here, though it's generated
 };
 
 export type Material = {
@@ -126,6 +128,7 @@ export async function getAllBooks() {
         publishDate: book.publishdate, // Map publishDate to publishdate
         amazonLink: book.amazon_link, // Map amazon_link to amazonLink
         reviewLink: book.review_link, // Map review_link to reviewLink
+        slug: book.slug, // Map slug
       };
 
       return {
@@ -204,6 +207,7 @@ export async function getBookById(id: string) {
     publishDate: book.publishdate, // Map publishDate to publishdate
     amazonLink: book.amazon_link, // Map amazon_link to amazonLink
     reviewLink: book.review_link, // Map review_link to reviewLink
+    slug: book.slug, // Map slug
   };
 
   // Map material database fields to our application's camelCase conventions
@@ -220,8 +224,91 @@ export async function getBookById(id: string) {
   };
 }
 
+
+// Get a single book by slug and short ID prefix
+export async function getBookBySlugAndShortId(slug: string, shortId: string) {
+  // Step 1: Query by slug only.
+  const { data: books, error: queryError } = await supabase
+    .from('books')
+    .select('*')
+    .eq('slug', slug);
+
+  if (queryError) {
+    console.error(`Error fetching books by slug '${slug}':`, queryError);
+    throw queryError; // Re-throw the database error
+  }
+
+  if (!books || books.length === 0) {
+    console.log(`No books found for slug '${slug}'`);
+    const notFoundError = new Error(`Book not found for slug '${slug}'`);
+    (notFoundError as any).code = 'PGRST116'; // Mimic Supabase "not found"
+    throw notFoundError;
+  }
+
+  // Step 2: Filter the results by the shortId prefix
+  const book = books.find(b => b.id.startsWith(shortId));
+
+  if (!book) {
+    console.log(`Found books for slug '${slug}', but none matched shortId '${shortId}'`);
+    const notFoundError = new Error(`Book not found for slug '${slug}' and shortId '${shortId}'`);
+    (notFoundError as any).code = 'PGRST116'; // Mimic Supabase "not found"
+    throw notFoundError;
+  }
+
+  // --- Book found, proceed to fetch related data ---
+
+  // Get book genres
+  const { data: genresData, error: genresError } = await supabase
+    .from('book_genres')
+    .select('genre')
+    .eq('book_id', book.id); // Use the full ID fetched
+
+  if (genresError) {
+    console.error(`Error fetching genres for book ID ${book.id}:`, genresError);
+    throw genresError;
+  }
+
+  // Get book materials
+  const { data: materials, error: materialsError } = await supabase
+    .from('materials')
+    .select('*')
+    .eq('book_id', book.id); // Use the full ID fetched
+
+  if (materialsError) {
+    console.error(`Error fetching materials for book ID ${book.id}:`, materialsError);
+    throw materialsError;
+  }
+
+  // Map database field names to our application's camelCase conventions
+  const mappedBook = {
+    ...book,
+    ageRange: book.age_range,
+    coverImage: book.coverimage,
+    publishDate: book.publishdate,
+    amazonLink: book.amazon_link,
+    reviewLink: book.review_link,
+    slug: book.slug, // Ensure slug is present
+  };
+
+  // Map material database fields to our application's camelCase conventions
+  const mappedMaterials = materials.map(material => ({
+    ...material,
+    fileUrl: material.fileurl,
+    fileSize: material.filesize,
+  }));
+
+  return {
+    ...mappedBook, // Contains full id, slug, etc.
+    genres: genresData?.map((g) => g.genre) || [], // Handle potential null genresData and map to 'genres' array
+    downloadMaterials: mappedMaterials || [], // Handle potential null materials
+  };
+} // End of getBookBySlugAndShortId function
+
 // Create a new book with genres
 export async function createBook(bookData: BookFormData, materials: Material[]) {
+  // Generate slug
+  const slug = generateSlug(bookData.title);
+
   // Start a transaction by manually controlling the error response
   // Create the book - mapping camelCase to snake_case for database fields
   const { data: book, error: bookError } = await supabase
@@ -237,6 +324,7 @@ export async function createBook(bookData: BookFormData, materials: Material[]) 
       age_range: bookData.ageRange, // Map ageRange to age_range
       amazon_link: bookData.amazonLink, // Map amazonLink to amazon_link
       review_link: bookData.reviewLink, // Map reviewLink to review_link
+      slug: slug, // Add generated slug
     })
     .select('id')
     .single();
@@ -280,6 +368,9 @@ export async function createBook(bookData: BookFormData, materials: Material[]) 
 
 // Update an existing book
 export async function updateBook(bookId: string, bookData: BookFormData, materials: Material[]) {
+  // Generate slug
+  const slug = generateSlug(bookData.title);
+
   // Update the book - mapping camelCase to snake_case for database fields
   const { error: bookError } = await supabase
     .from('books')
@@ -294,6 +385,7 @@ export async function updateBook(bookId: string, bookData: BookFormData, materia
       age_range: bookData.ageRange, // Map ageRange to age_range
       amazon_link: bookData.amazonLink, // Map amazonLink to amazon_link
       review_link: bookData.reviewLink, // Map reviewLink to review_link
+      slug: slug, // Add generated slug
     })
     .eq('id', bookId);
 

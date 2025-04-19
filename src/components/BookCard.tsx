@@ -1,5 +1,6 @@
 import React from 'react';
-import { Book } from '../data/books';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { Book } from '../data/books'; // Assuming this type includes 'slug' now
 import { Video, Music, Star } from 'lucide-react';
 
 interface BookCardProps {
@@ -7,6 +8,8 @@ interface BookCardProps {
 }
 
 const BookCard: React.FC<BookCardProps> = ({ book }) => {
+  const navigate = useNavigate(); // Initialize navigate
+
   // Function to prevent event propagation
   const stopPropagation = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -56,17 +59,14 @@ const BookCard: React.FC<BookCardProps> = ({ book }) => {
           {/* Using actual button elements with higher z-index and pointer-events */}
           <button
             onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // Keep stopPropagation if card itself is clickable
               e.preventDefault();
-              console.log('Explore Book button clicked for book ID:', book.id);
-              window.location.href = `/book/${book.id}`;
+              const shortId = book.id.substring(0, 8);
+              const targetUrl = `/books/${book.slug}-${shortId}`;
+              console.log('Navigating to:', targetUrl);
+              navigate(targetUrl);
             }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              console.log('Explore Book button mouse down for book ID:', book.id);
-              window.location.href = `/book/${book.id}`;
-            }}
+            // Removed redundant onMouseDown handler for navigation
             tabIndex={0}
             className="inline-block bg-primary-600 hover:bg-primary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 relative z-50 cursor-pointer"
             style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}
@@ -75,17 +75,14 @@ const BookCard: React.FC<BookCardProps> = ({ book }) => {
           </button>
           <button
             onClick={(e) => {
-              e.stopPropagation();
+              e.stopPropagation(); // Keep stopPropagation
               e.preventDefault();
-              console.log('Videos & Songs button clicked for book ID:', book.id);
-              window.location.href = `/multimedia/${book.id}`;
+              const shortId = book.id.substring(0, 8);
+              const targetUrl = `/multimedia/${book.slug}-${shortId}`; // Use new format
+              console.log('Navigating to:', targetUrl);
+              navigate(targetUrl);
             }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              console.log('Videos & Songs button mouse down for book ID:', book.id);
-              window.location.href = `/multimedia/${book.id}`;
-            }}
+             // Removed redundant onMouseDown handler for navigation
             tabIndex={0}
             className="inline-flex items-center bg-secondary-600 hover:bg-secondary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 relative z-50 cursor-pointer"
             style={{ pointerEvents: 'auto', touchAction: 'manipulation' }}

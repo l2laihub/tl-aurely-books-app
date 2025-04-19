@@ -50,8 +50,8 @@ const FeaturedBook: React.FC<FeaturedBookProps> = ({ book }) => {
             ))}
           </div>
           <p className="mb-6 text-white/90 line-clamp-4 font-body">{book.description}</p>
-          <Link 
-            to={`/book/${book.id}`}
+          <Link
+            to={`/books/${book.slug}-${book.id.substring(0, 8)}`} // Use new format
             className="inline-flex items-center bg-accent-500 text-white hover:bg-accent-400 font-medium py-3 px-6 rounded-full transition-all duration-300 self-start transform hover:-translate-y-1 hover:shadow-lg"
           >
             Explore Book <ChevronRight size={20} className="ml-1" />

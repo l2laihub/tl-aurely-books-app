@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getBookById } from '../services/bookService';
+import { useParams, Link, useNavigate } from 'react-router-dom'; // Add useNavigate
+import { getBookBySlugAndShortId } from '../services/bookService'; // Use new function
 import { getKindnessKitByBookId, getKitFiles, KindnessKit, KitFile } from '../services/kindnessKitService';
 import DownloadCard from '../components/DownloadCard';
 import KindnessKitSignup from '../components/KindnessKitSignup';
@@ -34,7 +34,8 @@ interface MaterialType {
 }
 
 const BookDetails: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { slugWithId } = useParams<{ slugWithId: string }>(); // Get slugWithId
+  const navigate = useNavigate(); // For potential redirects
   const [book, setBook] = useState<BookType | null>(null);
   const [kindnessKit, setKindnessKit] = useState<KindnessKit | null>(null);
   const [kitFiles, setKitFiles] = useState<KitFile[]>([]);
@@ -43,21 +44,51 @@ const BookDetails: React.FC = () => {
 
   useEffect(() => {
     const fetchBookDetails = async () => {
-      if (!id) return;
-      
+      if (!slugWithId) return;
+
+      // Parse slug and shortId
+      const parts = slugWithId.split('-');
+      if (parts.length < 2) {
+        setError('Invalid book URL format.');
+        setIsLoading(false);
+        return;
+      }
+      const shortId = parts.pop() || ''; // Last part is shortId
+      const slug = parts.join('-'); // Rest is the slug
+
+      if (shortId.length !== 8) { // Basic validation for our expected shortId length
+         setError('Invalid book identifier in URL.');
+         setIsLoading(false);
+         return;
+      }
+
+
       try {
         setIsLoading(true);
-        
-        // Fetch book data
-        const bookData = await getBookById(id);
+
+        // Fetch book data using slug and shortId
+        const bookData = await getBookBySlugAndShortId(slug, shortId);
         setBook(bookData);
-        
-        // Fetch kindness kit data for this book
+
+        // --- Check if the slug in the URL matches the fetched book's actual slug ---
+        // --- This handles cases where the title (and thus slug) might have changed ---
+        // --- or if someone manually typed a wrong slug but correct ID ---
+        const expectedSlugWithId = `${bookData.slug}-${bookData.id.substring(0, 8)}`;
+        if (slugWithId !== expectedSlugWithId) {
+            // Redirect to the canonical URL
+            navigate(`/books/${expectedSlugWithId}`, { replace: true });
+            // No need to continue fetching other data as we are redirecting
+            return;
+        }
+        // --- End of canonical URL check ---
+
+
+        // Fetch kindness kit data for this book using the full ID from bookData
         try {
-          const kitData = await getKindnessKitByBookId(id);
+          const kitData = await getKindnessKitByBookId(bookData.id);
           if (kitData) {
             setKindnessKit(kitData);
-            
+
             // Fetch kit files
             const filesData = await getKitFiles(kitData.id);
             setKitFiles(filesData);
@@ -66,17 +97,22 @@ const BookDetails: React.FC = () => {
           console.error('Error fetching kindness kit:', kitErr);
           // Don't set an error here, as the kindness kit is optional
         }
-        
+
         setIsLoading(false);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching book details:', err);
-        setError('Failed to load book details. Please try again later.');
+        // Check if the error indicates "not found" (e.g., from Supabase)
+        if (err.message?.includes('PGRST116')) { // Example: Supabase "Not Found" error code
+             setError('Book not found.');
+        } else {
+             setError('Failed to load book details. Please try again later.');
+        }
         setIsLoading(false);
       }
     };
-    
+
     fetchBookDetails();
-  }, [id]);
+  }, [slugWithId, navigate]); // Update dependency array
 
   if (isLoading) {
     return (
@@ -223,8 +259,8 @@ const BookDetails: React.FC = () => {
               
               {/* Multimedia Button */}
               <div className="mt-8">
-                <Link 
-                  to={`/multimedia/${book.id}`}
+                <Link
+                  to={`/multimedia/${slugWithId}`} // Use slugWithId from useParams
                   className="inline-flex items-center bg-secondary-600 hover:bg-secondary-500 text-white font-medium py-3 px-6 rounded-full transition-all duration-300 transform hover:-translate-y-1 hover:shadow-lg"
                 >
                   <Video size={18} className="mr-2" />

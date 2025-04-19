@@ -3,6 +3,21 @@
   command = "npm run build"
   functions = "netlify/functions"
 
+# Redirect old book URLs to the new slug-based URLs via a function
+[[redirects]]
+  from = "/book/:id"
+  to = "/.netlify/functions/redirect-book?id=:id"
+  status = 301 # Permanent Redirect
+  force = true # Ensure this runs even if a file exists at /book/:id (unlikely but safe)
+
+# Redirect old multimedia URLs to the new slug-based URLs via a function
+[[redirects]]
+  from = "/multimedia/:id"
+  to = "/.netlify/functions/redirect-multimedia?id=:id"
+  status = 301 # Permanent Redirect
+  force = true
+
+# SPA fallback rule (must come AFTER specific redirects)
 [[redirects]]
   from = "/*"
   to = "/index.html"

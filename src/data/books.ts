@@ -10,6 +10,7 @@ export interface Book {
   isbn: string;
   pages: number;
   ageRange: string;
+  slug: string; // Added for URL generation
   downloadMaterials: DownloadMaterial[];
 }
 
@@ -34,6 +35,7 @@ export const books: Book[] = [
     isbn: '978-1234567890',
     pages: 32,
     ageRange: '4-8 years',
+    slug: 'the-curious-adventures-of-penny-the-penguin', // Added slug
     downloadMaterials: [
       {
         id: '101',
@@ -72,6 +74,7 @@ export const books: Book[] = [
     isbn: '978-0987654321',
     pages: 24,
     ageRange: '3-6 years',
+    slug: 'counting-stars-with-professor-owl', // Added slug
     downloadMaterials: [
       {
         id: '201',
@@ -110,6 +113,7 @@ export const books: Book[] = [
     isbn: '978-5678901234',
     pages: 40,
     ageRange: '3-7 years',
+    slug: 'the-magical-garden-of-letters', // Added slug
     downloadMaterials: [
       {
         id: '301',
